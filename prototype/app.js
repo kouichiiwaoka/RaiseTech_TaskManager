@@ -2,6 +2,8 @@
 (() => {
   const STORAGE_KEY = 'raisetech-taskboard-prototype-v1';
   const statuses = {todo: '未着手', doing: '作業中', done: '完了'};
+  const emptySorts = () => ({todo:null,doing:null,done:null});
+  const validSort = sort => sort === null || (sort && ['priority','dueDate'].includes(sort.field) && ['asc','desc'].includes(sort.direction));
   const priorities = {high: '高', medium: '中', low: '低'};
   const $ = selector => document.querySelector(selector);
   const board = $('#board'), dialog = $('#task-dialog'), content = $('#dialog-content');
@@ -10,7 +12,7 @@
     const d = new Date(); d.setDate(d.getDate() + offset);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   };
-  const sample = () => ({confirmDelete: true, tasks: [
+  const sample = () => ({confirmDelete: true, columnSorts: emptySorts(), tasks: [
     {id:'sample-1',title:'トップ画面のレイアウトを考える',description:'ボードの余白やカードの情報量を確認する。\n操作しやすい配置を考えてみよう。',priority:'high',dueDate:localDate(1),status:'todo'},
     {id:'sample-2',title:'参考になるアプリを調べる',description:'使いやすいと感じたポイントをメモする。',priority:'medium',dueDate:'',status:'todo'},
     {id:'sample-3',title:'長いタスク名がカードにどのように表示されるか、折り返しと読みやすさを確認する',description:'長いタイトルの表示確認用サンプルです。',priority:'low',dueDate:localDate(5),status:'todo'},
@@ -34,7 +36,7 @@
   }
   function valid(data) {
     const ids = new Set();
-    return data && typeof data.confirmDelete==='boolean' && Array.isArray(data.tasks) && data.tasks.every(t => {
+    return data && (data.columnSorts === undefined || (data.columnSorts && Object.keys(statuses).every(key=>Object.hasOwn(data.columnSorts,key) && validSort(data.columnSorts[key])))) && (data.sortMode === undefined || ['manual','priority','dueDate'].includes(data.sortMode)) && typeof data.confirmDelete==='boolean' && Array.isArray(data.tasks) && data.tasks.every(t => {
       if (!t || typeof t.id!=='string' || ids.has(t.id)) return false;
       ids.add(t.id);
       return typeof t.title==='string' && t.title.trim() && typeof t.description==='string' && Object.hasOwn(priorities,t.priority) && Object.hasOwn(statuses,t.status) && typeof t.dueDate==='string' && (!t.dueDate || /^\d{4}-\d{2}-\d{2}$/.test(t.dueDate));
@@ -45,10 +47,10 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       const next = raw === null ? sample() : JSON.parse(raw);
       if (!valid(next)) throw new Error('invalid');
-      state=next; loadBlocked=false; notice(''); render();
+      state=normalize(next); loadBlocked=false; notice(''); render();
       $('#save-status').textContent=raw===null?'サンプルを表示中 · 操作後に保存':'このブラウザに保存済み';
     } catch {
-      state={tasks:[],confirmDelete:true}; loadBlocked=true; render();
+      state={tasks:[],confirmDelete:true,columnSorts:emptySorts()}; loadBlocked=true; render();
       $('#save-status').textContent='データを取得できませんでした';
       notice('保存済みデータを取得できませんでした。再取得するか、デモメニューからサンプルに戻してください。',true);
     }
@@ -57,19 +59,56 @@
     if (loadBlocked && !allowRecovery) { error('先に保存データを再取得するか、サンプルに戻してください。'); return false; }
     try {
       if (failNextSave) { failNextSave=false; $('#demo-status').textContent='保存失敗のデモを実行しました。もう一度操作すると保存できます。'; throw new Error('demo'); }
+      next=normalize(next);
       localStorage.setItem(STORAGE_KEY,JSON.stringify(next));
     } catch { error('保存できませんでした。変更は確定していません。入力を保ったまま、もう一度お試しください。'); return false; }
-    state=next; loadBlocked=false; notice(''); render(); $('#save-status').textContent=message; return true;
+    state=normalize(next); loadBlocked=false; notice(''); render(); $('#save-status').textContent=message; return true;
+  }
+  function compareTasks(a,b,sort) {
+    const direction=sort.direction==='asc'?1:-1;
+    if(sort.field==='priority') {
+      const rank={low:0,medium:1,high:2};
+      return direction*(rank[a.priority]-rank[b.priority]);
+    }
+    // Undated tasks stay last in both directions; equal keys keep their order.
+    if(a.dueDate===b.dueDate)return 0;
+    if(!a.dueDate)return 1;
+    if(!b.dueDate)return -1;
+    return direction*(a.dueDate<b.dueDate?-1:1);
+  }
+  function normalize(data) {
+    const columnSorts=data.columnSorts ? structuredClone(data.columnSorts) : emptySorts();
+    // Migrate the previous board-wide preference without losing existing tasks.
+    if(!data.columnSorts && data.sortMode && data.sortMode!=='manual') {
+      for(const status of Object.keys(statuses))columnSorts[status]={field:data.sortMode,direction:data.sortMode==='priority'?'desc':'asc'};
+    }
+    const columns={};
+    for(const status of Object.keys(statuses)) {
+      columns[status]=data.tasks.filter(t=>t.status===status);
+      if(columnSorts[status])columns[status].sort((a,b)=>compareTasks(a,b,columnSorts[status]));
+    }
+    const positions={todo:0,doing:0,done:0};
+    return {confirmDelete:data.confirmDelete,columnSorts,tasks:data.tasks.map(t=>columns[t.status][positions[t.status]++])};
+  }
+  function sortControls(status,label) {
+    const selected=state.columnSorts[status];
+    return `<div class="column-sorts" aria-label="${label}の並べ替え">${[['priority','優先度'],['dueDate','期限']].map(([field,name])=>`<div class="sort-controls" role="group" aria-label="${label}の${name}"><span class="sort-label">${name}</span>${[['asc','昇順','↑'],['desc','降順','↓']].map(([direction,text,arrow])=>{
+      const active=selected?.field===field && selected?.direction===direction;
+      const order=field==='priority'?(direction==='asc'?'低→中→高':'高→中→低'):(direction==='asc'?'近い順':'遠い順');
+      return `<button type="button" data-sort-field="${field}" data-sort-direction="${direction}" data-sort-status="${status}" aria-pressed="${active}" aria-label="${label}を${name}の${text}（${order}）に並べ替える" ${loadBlocked?'disabled':''}>${text} <span aria-hidden="true">${arrow}</span></button>`;
+    }).join('')}</div>`).join('')}<p class="column-sort-note" role="status">${selected ? (selected.field==='priority' ? `優先度：${selected.direction==='asc'?'低 → 中 → 高':'高 → 中 → 低'}` : `期限：${selected.direction==='asc'?'近い順':'遠い順'}・期限なしは最後`) : 'ドラッグでカードを移動できます。'}</p></div>`;
   }
   function render() {
     board.innerHTML=Object.entries(statuses).map(([key,label]) => {
       const tasks=state.tasks.filter(t=>t.status===key);
-      return `<section class="column" data-status="${key}" aria-labelledby="heading-${key}"><div class="column-header"><span class="dot" aria-hidden="true"></span><h2 id="heading-${key}">${label}</h2><span class="count">${tasks.length}</span><span class="column-note">${{todo:'これから取り組む',doing:'いま進めている',done:'できたこと'}[key]}</span></div><div class="card-list" data-status="${key}" aria-label="${label}のタスク">${tasks.map(t=>`<button class="card" draggable="true" data-id="${escape(t.id)}" aria-label="${escape(t.title)}の詳細"><span class="card-top">${badge(t.priority)}<span class="grip" aria-hidden="true">⠿</span></span><h3>${escape(t.title)}</h3><span class="card-bottom ${t.dueDate && t.dueDate<localDate(0) && key!=='done'?'overdue':''}">${t.dueDate?'◷':'—'} ${dateLabel(t.dueDate)}</span></button>`).join('') || '<p class="empty"><span aria-hidden="true">▧</span>まだタスクはありません<br>ここにカードを移動できます</p>'}</div></section>`;
+      return `<section class="column" data-status="${key}" aria-labelledby="heading-${key}"><div class="column-header"><span class="dot" aria-hidden="true"></span><h2 id="heading-${key}">${label}</h2><span class="count">${tasks.length}</span><span class="column-note">${{todo:'これから取り組む',doing:'いま進めている',done:'できたこと'}[key]}</span></div>${sortControls(key,label)}<div class="card-list" data-status="${key}" aria-label="${label}のタスク">${tasks.map(t=>`<button class="card" draggable="true" data-id="${escape(t.id)}" aria-label="${escape(t.title)}の詳細"><span class="card-top">${badge(t.priority)}<span class="grip" aria-hidden="true">⠿</span></span><h3>${escape(t.title)}</h3><span class="card-bottom ${t.dueDate && t.dueDate<localDate(0) && key!=='done'?'overdue':''}">${t.dueDate?'◷':'—'} ${dateLabel(t.dueDate)}</span></button>`).join('') || `<p class="empty"><span aria-hidden="true">▧</span>まだタスクはありません<br>ここにカードを移動できます</p>`}</div></section>`;
     }).join('');
     const done=state.tasks.filter(t=>t.status==='done').length;
     $('#summary').textContent=`${state.tasks.length}件のタスク · ${done}件完了`;
     $('#add-task').disabled=loadBlocked;
+    $('#board-tip').textContent='カードをクリックして詳細を確認。各列で並べ替えできます。ドラッグすると移動に関わる列のソートを解除します。';
   }
+
   function open(view, id, remember = true) {
     if (remember) opener=document.activeElement;
     mode=view; selectedId=id;
@@ -126,7 +165,20 @@
     if (action==='delete') { if(state.confirmDelete) open('delete',selectedId,false); else removeTask(false); }
     if (action==='confirm-delete') removeTask($('#skip-confirm').checked);
   };
-  board.onclick=e=>{const card=e.target.closest('.card');if(card && !dragId) open('detail',card.dataset.id);};
+  board.onclick=e=>{
+    const button=e.target.closest('[data-sort-field]');
+    if(button) {
+      const {sortField:field,sortDirection:direction,sortStatus:status}=button.dataset;
+      if(loadBlocked || !Object.hasOwn(statuses,status) || !validSort({field,direction}))return;
+      const next=structuredClone(state);
+      next.columnSorts[status]={field,direction};
+      if(save(next,`${statuses[status]}の並び順を保存しました`)) {
+        board.querySelector(`[data-sort-status="${status}"][data-sort-field="${field}"][data-sort-direction="${direction}"]`)?.focus();
+      }
+      return;
+    }
+    const card=e.target.closest('.card');if(card && !dragId)open('detail',card.dataset.id);
+  };
   function clearDragStyles(){board.querySelectorAll('.drag-over,.drop-before,.drop-after').forEach(el=>el.classList.remove('drag-over','drop-before','drop-after'));}
   board.addEventListener('dragstart',e=>{
     const card=e.target.closest('.card');if(!card || loadBlocked) {e.preventDefault();return;}
@@ -145,6 +197,8 @@
     if(target?.dataset.id===id){dragId=null;clearDragStyles();return;}
     const next=structuredClone(state), task=next.tasks.find(t=>t.id===id);
     if(!task)return;
+    next.columnSorts[task.status]=null;
+    next.columnSorts[list.dataset.status]=null;
     next.tasks=next.tasks.filter(t=>t.id!==id);task.status=list.dataset.status;
     let index=next.tasks.length;
     if(target){index=next.tasks.findIndex(t=>t.id===target.dataset.id);if(e.clientY>=target.getBoundingClientRect().top+target.offsetHeight/2)index++;}
@@ -153,9 +207,9 @@
   });
   board.addEventListener('dragend',()=>{dragId=null;clearDragStyles();board.querySelectorAll('.dragging').forEach(el=>el.classList.remove('dragging'));});
   $('#reset-demo').onclick=()=>{if(confirm('このデモの保存内容をサンプルデータに置き換えますか？')){if(save(sample(),'サンプルデータを保存しました',true))$('#demo-status').textContent='サンプルと削除確認設定を初期状態に戻しました。';}};
-  $('#empty-demo').onclick=()=>{if(confirm('このデモのタスクを空にしますか？'))save({tasks:[],confirmDelete:true},'空のボードを保存しました',true);};
+  $('#empty-demo').onclick=()=>{if(confirm('このデモのタスクを空にしますか？'))save({tasks:[],confirmDelete:true,columnSorts:emptySorts()},'空のボードを保存しました',true);};
   $('#fail-save').onclick=()=>{failNextSave=true;$('#demo-status').textContent='次の追加・編集・削除・移動などで保存失敗を再現します。データは変更しません。';};
-  $('#fail-load').onclick=()=>{loadBlocked=true;state={tasks:[],confirmDelete:true};render();notice('データを取得できませんでした（デモ）。「再取得」で保存済みの状態に戻れます。',true);$('#save-status').textContent='取得失敗のデモ';};
+  $('#fail-load').onclick=()=>{loadBlocked=true;state={tasks:[],confirmDelete:true,columnSorts:emptySorts()};render();notice('データを取得できませんでした（デモ）。「再取得」で保存済みの状態に戻れます。',true);$('#save-status').textContent='取得失敗のデモ';};
   $('#enable-confirm').onclick=()=>{const next=structuredClone(state);next.confirmDelete=true;if(save(next,'削除確認を有効にしました'))$('#demo-status').textContent='次の削除から確認画面を表示します。';};
   window.addEventListener('storage',e=>{if(e.key===STORAGE_KEY){if(dialog.open){notice('別のタブでデモの保存内容が変わりました。入力中の内容は維持しています。再取得前に操作をキャンセルしてください。');}else load();}});
   load();
