@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Task Board — タスク管理プロトタイプ</title>
+<link rel="stylesheet" href="styles.css"><script src="app.js" defer></script>
+</head>
+<body>
+<header class="app-header"><a class="brand" href="index.html"><span class="brand-icon" aria-hidden="true">▥</span> Task Board</a><span class="prototype-badge">PROTOTYPE</span><span class="header-note">自分のペースで、一つずつ。</span></header>
+<main>
+<section class="board-heading"><div><p class="eyebrow">MY WORKSPACE</p><h1>マイタスク</h1><p class="intro">やることを整理して、今日の一歩を進めよう。</p></div><button class="primary" id="add-task">＋ タスクを追加</button></section>
+<div class="board-meta"><p id="summary"></p><p id="save-status" role="status">このブラウザに保存</p></div>
+<div id="notice" class="notice" role="alert" hidden></div>
+<section id="board" class="board" aria-label="タスクボード"></section>
+<p class="board-tip">カードをクリックして詳細を確認。ドラッグして進捗や並び順を変更できます。</p>
+<details class="demo-panel"><summary>デモの確認メニュー</summary><p>画面の認識合わせ用です。データはこのブラウザ内だけに保存します。</p><div class="demo-actions"><button id="reset-demo">サンプルデータに戻す</button><button id="empty-demo">空のボードを試す</button><button id="fail-save">次の保存失敗を試す</button><button id="fail-load">取得失敗を試す</button><button id="enable-confirm">削除確認を再び有効にする</button></div><p id="demo-status" role="status"></p></details>
+</main>
+<dialog id="task-dialog" aria-labelledby="dialog-title"><div class="modal-header"><div><p class="eyebrow" id="dialog-kicker">TASK</p><h2 id="dialog-title"></h2></div><button class="icon-button" id="close-dialog" aria-label="閉じる">×</button></div><div id="dialog-content"></div></dialog>
+<footer>Task Board · 画面確認用プロトタイプ</footer>
+</body></html>
