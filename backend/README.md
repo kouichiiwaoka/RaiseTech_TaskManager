@@ -20,13 +20,13 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 今回はGradleのビルド設定、Wrapper、最低限の設定ファイルまでを対象とします。API・業務処理・DB接続設定・マイグレーションは今後実装します。採用DBはPostgreSQLです。
 
-現在のローカル作業ツリーには、Spring Initializr生成の起動クラスと疎通確認用テストが残っています。Javaファイルの削除は利用者が行う方針のため、自動では削除していません。これらのJavaファイルがある状態で、次の動作確認を実施しました。
+Spring Initializr生成の起動クラスと疎通確認用テストを含みます。API・業務処理の追加実装は行っていません。
 
 ## ローカルでの動作確認
 
 2026年11月15日にJava 25でテスト1件成功、JAR生成、起動後の `/actuator/health` の `status: UP` を確認済みです。確認後はサーバーを停止しています。DB接続を確認したものではありません。
 
-起動クラスとテストが残っている場合は、準備の環境変数を設定したターミナルで次を実行できます。
+準備の環境変数を設定したターミナルで次を実行できます。
 
 ```sh
 ./gradlew test bootJar
@@ -42,8 +42,6 @@ curl --fail http://127.0.0.1:8080/actuator/health
 JSON内の `"status":"UP"` が正常応答です。`ERR_CONNECTION_REFUSED` はサーバー停止中などで接続できない状態を示します。
 
 停止は、起動したターミナルで **Control（⌃）+ C** を押します。MacでもCommand（⌘）ではなくControlを使用します。
-
-Javaファイル削除後は実装前の初期設定として扱い、`./gradlew help` でGradle設定を確認してください。起動クラスを再度用意するまで `bootRun` と `bootJar` は利用しません。
 
 ## DB連携の状態
 
