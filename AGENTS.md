@@ -6,7 +6,13 @@
 - checkout / reset自体は禁止しない。実行前に差分と対象を確認し、未コミット変更・無関係な変更を破棄しない。
 - 未コミット変更を破棄するhard reset、強制checkout、作業ツリーを破棄するrestore、git clean、履歴改変、force pushは禁止。通常のマージは許可する。
 - .git・履歴・オブジェクト・参照・reflogの削除、履歴の初期化・全消去、filter-branch / filter-repo、reflog expire、prune、gcによる復旧情報の除去は禁止。
-- force push（--force-with-lease、+refspec、--mirrorを含む）、リモートブランチ・タグ削除、未マージブランチの強制削除、stash drop / clearは禁止。
+- force push（--force-with-lease、+refspec、--mirrorを含む）、未マージのリモートブランチ削除・タグ削除、未マージブランチの強制削除、stash drop / clearは禁止。
 - rm / rmdir / unlinkなどによるファイル削除は禁止。不要ファイルは削除せず、理由を報告する。通常の内容編集は許可する。
 - APIキー・認証情報・個人情報を表示・埋め込み・コミットしない。サンプルデータは架空の情報を使用する。
 - 別ツールやスクリプトで禁止操作を回避しない。.rulesは先頭一致の補助制御であり、全別表記や通信内容の検査を保証しない。
+
+## マージ済み作業ブランチの削除
+- mainなどの統合先へマージ済みの作業ブランチは、ローカル・設定済みリモートとも個別確認なしで削除してよい。main・デフォルトブランチ・保護ブランチは削除しない。
+- 削除前にfetchし、対象の最新コミットが統合先の祖先であることをgit merge-base --is-ancestorで確認する。ローカルに未送信コミットがないこと、削除対象が別worktreeで使用中でないことも確認する。確認できなければ削除しない。
+- ローカルはgit branch -dを使用し、-Dは使用しない。リモートは確認した作業ブランチに限定してgit push origin --deleteを使用する。force pushは禁止のまま。
+- prefix_ruleだけではマージ済みか判定できないため、リモート削除のルールはpromptとする。これは未マージブランチ削除の許可ではない。
