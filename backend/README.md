@@ -63,6 +63,8 @@ PostgreSQLの初期ユーザー・パスワード・DB名は初回のボリュ�
 
 ## 4. タスクREAD API
 
+処理は `TaskController → TaskService → TaskRepository → PostgreSQL` の3層構造です。ControllerはHTTP入力・ステータスの検証・404応答、Serviceは検索語の整形・一覧と詳細の取得・レスポンスへの変換、RepositoryはDBアクセスを担当します。読み取り専用トランザクションはServiceで管理します。
+
 起動後、リポジトリルートでローカル専用の架空データ4件を投入します。Flywayの対象外なので通常起動時には投入されません。再実行しても同じIDは追加・上書きせず、既存データを保持します。
 
 ```sh
