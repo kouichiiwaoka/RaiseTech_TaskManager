@@ -1,0 +1,28 @@
+name: 開発タスク
+description: 機能追加・修正・文書・設定変更の作業を登録する
+body:
+  - type: textarea
+    id: purpose
+    attributes:
+      label: 目的・背景
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 対象範囲
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 完了条件
+      description: 完了を判断できる条件を列挙してください。
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: 確認方法
+    validations:
+      required: true
