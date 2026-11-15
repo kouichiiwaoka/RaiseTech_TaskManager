@@ -22,7 +22,7 @@ DB名・ユーザー名は `taskmanager`、接続先は `127.0.0.1:5432`。ポ�
 cd backend
 export JAVA_HOME="$PWD/.local/jdk-25.0.5+8/Contents/Home"
 export PATH="$JAVA_HOME/bin:$PATH"
-./gradlew bootRun
+GRADLE_USER_HOME=/private/tmp/taskmanager-gradle ./gradlew bootRun
 ```
 
 この端末では上記パスにJDKを配置済みです。別端末ではJDK 25を別途用意してください。初回ビルドは公開依存関係を取得します。バックエンドは `backend/` またはリポジトリルートを作業ディレクトリとして起動すると `.env` を読み込みます。
@@ -40,7 +40,7 @@ curl --fail http://127.0.0.1:8080/actuator/health
 DBを起動した状態で、上記のJava設定を行ったターミナルで実行します。
 
 ```sh
-./gradlew test bootJar
+GRADLE_USER_HOME=/private/tmp/taskmanager-gradle ./gradlew test bootJar
 ```
 
 実PostgreSQLを使用して、HTTPヘルスチェックとバックエンドのJdbcTemplate経由のタスク保存・取得・初期値を検証します。テストの挿入はトランザクションのロールバックで残りません。H2への置換は行いません。
@@ -53,10 +53,37 @@ Spring Data JPA / Hibernate、PostgreSQL JDBCドライバー、Flywayを導入�
 
 V1では `tasks` テーブルを作成します。IDはUUID、タイトルは255文字以内かつ空白のみを禁止。優先度は `high / medium / low`（初期値 `medium`）、状態は `todo / doing / done`（初期値 `todo`）、期限はDATE、並び順は0以上です。適用済みSQLは変更せず、次のバージョンのSQLを追加してください。
 
-今回はDBの起動・接続・マイグレーション・読み書きの確認までです。タスク操作のREST API、JPAエンティティ、アプリ設定テーブル、プロトタイプとの連携は今後の実装です。
+タスクのJPAエンティティとREAD APIを実装済みです。書き込みAPI、アプリ設定テーブル、プロトタイプとの連携は今後の実装です。
 
 ## 停止と永続化
 
 ルートで `docker compose stop` を実行するとDBを停止します。再開は `docker compose up -d --wait` です。データは名前付きボリューム `postgres_data` に保存され、コンテナ再作成後も保持されます。ボリューム削除は行わないでください。
 
 PostgreSQLの初期ユーザー・パスワード・DB名は初回のボリューム初期化時だけ反映されます。既存ボリュームに対して `.env` の認証設定だけ変更してもDB側は変更されません。
+
+## 4. タスクREAD API
+
+起動後、リポジトリルートでローカル専用の架空データ4件を投入します。Flywayの対象外なので通常起動時には投入されません。再実行しても同じIDは追加・上書きせず、既存データを保持します。
+
+```sh
+docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backend/src/main/resources/db/local/seed-tasks.sql
+curl --fail-with-body http://127.0.0.1:8080/api/tasks
+curl --fail-with-body --get http://127.0.0.1:8080/api/tasks --data-urlencode 'status=doing' --data-urlencode 'q=API'
+curl --fail-with-body http://127.0.0.1:8080/api/tasks/00000000-0000-4000-8000-000000000001
+```
+
+| GETパス | 動作 |
+|---|---|
+| `/api/tasks` | 全タスクをJSON配列で取得 |
+| `/api/tasks?status=doing&q=API` | ステータスとタイトルの部分一致で検索。条件はAND |
+| `/api/tasks/{id}` | UUID指定で1件のJSONオブジェクトを取得 |
+
+`status` は省略可能で `todo / doing / done` のいずれかです。不正値・空文字は400です。`q` は省略・空白のみで全件、前後の空白を除去し、大文字小文字を区別しません。`%` と `_` も通常の文字として検索します。説明文は検索対象外です。
+
+一覧の順序は `todo → doing → done`、同じ列では `sortOrder` 昇順、同順位ではUUID昇順です。該当なしは200と `[]`、存在しないUUIDは404、不正なUUID形式は400です。
+
+レスポンスは `id / title / description / priority / dueDate / status / sortOrder` を返します。期限は `YYYY-MM-DD`、未設定の説明・期限は `null` です。一覧はページ分割せず、単一利用者の小規模ボード向けです。画面と書き込みAPIは含みません。
+
+HTTP統合テストでは実PostgreSQLにランダムUUIDのテスト行を投入し、一覧順序・検索・全項目・null・400・404を実通信で検証します。終了後はそのテストが投入した行だけを除去し、既存データを保持します。実行は上記の `test bootJar` と同じです。この環境の既存Gradleキャッシュは `/private/tmp/taskmanager-gradle` です。別端末では `GRADLE_USER_HOME` の指定は不要です。
+
+2026年11月15日、既存2件とREAD APIの6件、計8件のテスト成功とJAR生成を確認しました。JARを `--server.port=8081` で起動し、curlで一覧4件・`status=doing&q=API` の検索1件・UUID指定の詳細1件を取得済みです。データ投入SQLの2回目は `INSERT 0 0` で重複がないことも確認しました。検証時のアクセス先は `http://127.0.0.1:8081/api/tasks` です。
