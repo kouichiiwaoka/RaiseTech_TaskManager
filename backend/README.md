@@ -43,7 +43,7 @@ DBを起動した状態で、上記のJava設定を行ったターミナルで�
 GRADLE_USER_HOME=/private/tmp/taskmanager-gradle ./gradlew test bootJar
 ```
 
-実PostgreSQLを使用して、HTTPヘルスチェックとバックエンドのJdbcTemplate経由のタスク保存・取得・初期値を検証します。テストの挿入はトランザクションのロールバックで残りません。H2への置換は行いません。
+実PostgreSQLを使用して、HTTPヘルスチェックとバックエンドのJdbcTemplate経由のタスク保存・取得・初期値を検証します。JdbcTemplate経由のテストの挿入はトランザクションのロールバックで残りません。後述のHTTP統合テストは別途テスト行を投入し、終了後にその行だけを除去します。H2への置換は行いません。
 
 2026年11月15日、この環境でテスト2件成功とJAR生成を確認済みです。
 
@@ -53,7 +53,7 @@ Spring Data JPA / Hibernate、PostgreSQL JDBCドライバー、Flywayを導入�
 
 V1では `tasks` テーブルを作成します。IDはUUID、タイトルは255文字以内かつ空白のみを禁止。優先度は `high / medium / low`（初期値 `medium`）、状態は `todo / doing / done`（初期値 `todo`）、期限はDATE、並び順は0以上です。適用済みSQLは変更せず、次のバージョンのSQLを追加してください。
 
-タスクのJPAエンティティとREAD APIを実装済みです。書き込みAPI、アプリ設定テーブル、プロトタイプとの連携は今後の実装です。
+タスクのJPAエンティティとREAD APIを実装済みです。実アプリのフロントエンドとの検索・閲覧連携も実装済みです。書き込みAPIとアプリ設定テーブルは今後の実装です。`prototype/`は独立した画面確認用デモで、APIとは接続しません。
 
 ## 停止と永続化
 
@@ -65,7 +65,7 @@ PostgreSQLの初期ユーザー・パスワード・DB名は初回のボリュ�
 
 処理は `TaskController → TaskService → TaskRepository → PostgreSQL` の3層構造です。ControllerはHTTP入力・ステータスの検証・404応答、Serviceは検索語の整形・一覧と詳細の取得・レスポンスへの変換、RepositoryはDBアクセスを担当します。読み取り専用トランザクションはServiceで管理します。
 
-起動後、リポジトリルートでローカル専用の架空データ4件を投入します。Flywayの対象外なので通常起動時には投入されません。再実行しても同じIDは追加・上書きせず、既存データを保持します。
+デモデータが必要な場合のみ、起動後にリポジトリルートでローカル専用の架空データ4件を投入できます。Flywayの対象外なので通常起動時には投入されません。再実行しても同じIDは追加・上書きせず、既存データを保持します。
 
 ```sh
 docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backend/src/main/resources/db/local/seed-tasks.sql
@@ -91,3 +91,5 @@ HTTP統合テストでは実PostgreSQLにランダムUUIDのテスト行を投�
 2026年11月15日、既存2件とREAD APIの6件、計8件のテスト成功とJAR生成を確認しました。JARを `--server.port=8081` で起動し、curlで一覧4件・`status=doing&q=API` の検索1件・UUID指定の詳細1件を取得済みです。データ投入SQLの2回目は `INSERT 0 0` で重複がないことも確認しました。検証時のアクセス先は `http://127.0.0.1:8081/api/tasks` です。
 
 上記の8081による検証記録は過去の実績です。現在の起動ルールではバックエンドは8080に固定し、競合回避に別ポートを使用しません。
+
+画面からこのAPIへ検索条件が渡る流れと、Controller・Service・Repository・DBの役割は[学習メモ](../学習メモ.md)を参照してください。カード選択時の詳細表示は取得済み一覧データを使用し、上記の詳細取得APIは現在の画面からは呼びません。

@@ -1,4 +1,6 @@
-# Getting Started
+# Generated Reference Links
+
+Spring Initializr生成時の参考リンク集です。現在の起動・API仕様は[バックエンドREADME](README.md)、全体の入口は[ルートREADME](../README.md)を参照してください。OCIイメージ作成やBuild Scansのリンクは本プロジェクトでの実行許可を意味しません。開発はローカルで行い、外部送信・デプロイはAGENTS.mdの方針に従います。
 
 ### Reference Documentation
 For further reference, please consider the following sections:
