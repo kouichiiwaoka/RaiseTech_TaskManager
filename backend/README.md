@@ -8,13 +8,13 @@ Java 25 / Spring Boot 4.1.2 / Gradle 9.8.2。バックエンドはホストで�
 
 ```sh
 sh scripts/setup-local-db.sh
-docker compose up -d --wait
+DB_PORT=5432 docker compose up -d --wait
 docker compose ps
 ```
 
 セットアップはランダムなパスワードをGit対象外の `.env` に保存します。既存の `.env` は上書きしません。認証情報を含むため `.env` や `docker compose config` の出力を共有しないでください。
 
-DB名・ユーザー名は `taskmanager`、接続先は `127.0.0.1:5432`。ポートが使用中なら `.env` の `DB_PORT` を変更します。バックエンドも同じ設定を読み込みます。外部DBを使う場合は環境変数 `DB_HOST` / `DB_PORT` / `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` を設定できます。
+DB名・ユーザー名は `taskmanager`、接続先は `127.0.0.1:5432` に固定します。競合時は別ポートへ変更せず、起動元を確認して競合する他プロジェクトのローカルサービスを通常停止します。同じプロジェクトの正常なサービスは再利用します。起動全体の手順は[統一起動スキル](../skills/start-frontend-backend/SKILL.md)を参照してください。
 
 ## 2. バックエンドを起動
 
@@ -22,7 +22,7 @@ DB名・ユーザー名は `taskmanager`、接続先は `127.0.0.1:5432`。ポ�
 cd backend
 export JAVA_HOME="$PWD/.local/jdk-25.0.5+8/Contents/Home"
 export PATH="$JAVA_HOME/bin:$PATH"
-GRADLE_USER_HOME=/private/tmp/taskmanager-gradle ./gradlew bootRun
+DB_HOST=127.0.0.1 DB_PORT=5432 SERVER_PORT=8080 GRADLE_USER_HOME=/private/tmp/taskmanager-gradle ./gradlew bootRun --args='--server.address=127.0.0.1 --server.port=8080'
 ```
 
 この端末では上記パスにJDKを配置済みです。別端末ではJDK 25を別途用意してください。初回ビルドは公開依存関係を取得します。バックエンドは `backend/` またはリポジトリルートを作業ディレクトリとして起動すると `.env` を読み込みます。
@@ -57,7 +57,7 @@ V1では `tasks` テーブルを作成します。IDはUUID、タイトルは255
 
 ## 停止と永続化
 
-ルートで `docker compose stop` を実行するとDBを停止します。再開は `docker compose up -d --wait` です。データは名前付きボリューム `postgres_data` に保存され、コンテナ再作成後も保持されます。ボリューム削除は行わないでください。
+ルートで `docker compose stop` を実行するとDBを停止します。再開は `DB_PORT=5432 docker compose up -d --wait` です。データは名前付きボリューム `postgres_data` に保存され、コンテナ再作成後も保持されます。ボリューム削除は行わないでください。
 
 PostgreSQLの初期ユーザー・パスワード・DB名は初回のボリューム初期化時だけ反映されます。既存ボリュームに対して `.env` の認証設定だけ変更してもDB側は変更されません。
 
@@ -89,3 +89,5 @@ curl --fail-with-body http://127.0.0.1:8080/api/tasks/00000000-0000-4000-8000-00
 HTTP統合テストでは実PostgreSQLにランダムUUIDのテスト行を投入し、一覧順序・検索・全項目・null・400・404を実通信で検証します。終了後はそのテストが投入した行だけを除去し、既存データを保持します。実行は上記の `test bootJar` と同じです。この環境の既存Gradleキャッシュは `/private/tmp/taskmanager-gradle` です。別端末では `GRADLE_USER_HOME` の指定は不要です。
 
 2026年11月15日、既存2件とREAD APIの6件、計8件のテスト成功とJAR生成を確認しました。JARを `--server.port=8081` で起動し、curlで一覧4件・`status=doing&q=API` の検索1件・UUID指定の詳細1件を取得済みです。データ投入SQLの2回目は `INSERT 0 0` で重複がないことも確認しました。検証時のアクセス先は `http://127.0.0.1:8081/api/tasks` です。
+
+上記の8081による検証記録は過去の実績です。現在の起動ルールではバックエンドは8080に固定し、競合回避に別ポートを使用しません。
