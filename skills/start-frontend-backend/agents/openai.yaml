@@ -1,0 +1,6 @@
+interface:
+  display_name: "フロント・バックエンド起動"
+  short_description: "標準ポート固定で競合サービスの停止・DB・API・画面の起動を統一"
+  default_prompt: "$start-frontend-backend を使って、標準ポートの競合を解消し、Task ManagerのDB・バックエンド・フロントエンドを起動して接続を確認してください。"
+policy:
+  allow_implicit_invocation: true

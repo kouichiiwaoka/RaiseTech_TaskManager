@@ -1,0 +1,38 @@
+import type { SearchConditions, Task } from '../types'
+
+function isTask(value: unknown): value is Task {
+  if (typeof value !== 'object' || value === null) return false
+  const task = value as Record<string, unknown>
+  return typeof task.id === 'string'
+    && typeof task.title === 'string'
+    && (task.description === null || typeof task.description === 'string')
+    && ['high', 'medium', 'low'].includes(String(task.priority))
+    && ['todo', 'doing', 'done'].includes(String(task.status))
+    && (task.dueDate === null || (typeof task.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(task.dueDate)))
+    && Number.isInteger(task.sortOrder) && Number(task.sortOrder) >= 0
+}
+
+export async function fetchTasks(conditions: SearchConditions, signal: AbortSignal): Promise<Task[]> {
+  const params = new URLSearchParams()
+  if (conditions.q.trim()) params.set('q', conditions.q.trim())
+  if (conditions.status) params.set('status', conditions.status)
+  const query = params.toString()
+  const response = await fetch(`/api/tasks${query ? `?${query}` : ''}`, {
+    signal,
+    headers: { Accept: 'application/json' },
+  })
+  if (!response.ok) {
+    if (response.status === 400) throw new Error('検索条件を確認して、もう一度検索してください。')
+    throw new Error('タスクを取得できませんでした。バックエンドの起動状態を確認して再取得してください。')
+  }
+  let data: unknown
+  try {
+    data = await response.json()
+  } catch {
+    throw new Error('取得したデータを読み取れませんでした。再取得してください。')
+  }
+  if (!Array.isArray(data) || !data.every(isTask)) {
+    throw new Error('取得したデータの形式が正しくありません。再取得してください。')
+  }
+  return data
+}
