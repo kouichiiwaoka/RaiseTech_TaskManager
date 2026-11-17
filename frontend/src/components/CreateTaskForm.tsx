@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { createTask } from '../api/tasks'
+import type { Task } from '../types'
+import { createTask, updateTask } from '../api/tasks'
 
-export function CreateTaskForm({ onSaved, onCancel, onBusy }: {
-  onSaved: () => void; onCancel: () => void; onBusy: (busy: boolean) => void
+export function CreateTaskForm({ onSaved, onCancel, onBusy, task }: {
+  task?: Task; onSaved: (task?: Task) => void; onCancel: () => void; onBusy: (busy: boolean) => void
 }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -25,10 +26,11 @@ export function CreateTaskForm({ onSaved, onCancel, onBusy }: {
     onBusy(true)
     setError('')
     try {
-      await createTask({ title, description: String(fields.get('description') ?? '') || null,
-        priority: String(fields.get('priority')) as 'high' | 'medium' | 'low', dueDate: String(fields.get('dueDate') ?? '') || null })
+      const input = { title, description: String(fields.get('description') ?? '') || null,
+        priority: String(fields.get('priority')) as 'high' | 'medium' | 'low', dueDate: String(fields.get('dueDate') ?? '') || null }
+      const result = task ? await updateTask(task.id, input) : await createTask(input)
       onBusy(false)
-      onSaved()
+      onSaved(result || undefined)
     } catch (error) {
       setError(error instanceof Error ? error.message : '保存に失敗しました。')
     } finally {
@@ -38,13 +40,13 @@ export function CreateTaskForm({ onSaved, onCancel, onBusy }: {
     }
   }
 
-  return <form onSubmit={submit} aria-label="タスク追加" aria-busy={saving}>
+  return <form onSubmit={submit} aria-label={task ? "タスク編集" : "タスク追加"} aria-busy={saving}>
     {error && <p role="alert" className="form-error">{error}</p>}
     <fieldset disabled={saving} className="border-0 m-0 p-0 min-w-0">
-      <label className="field">タイトル<span className="required">必須</span><input name="title" placeholder="例：画面のデザインを確認する" aria-required="true" /></label>
-      <label className="field">説明文<span className="optional">任意</span><textarea name="description" placeholder="詳しい内容やメモを入力" /></label>
-      <div className="field-row"><label className="field">優先度<select name="priority" defaultValue="medium"><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></label><label className="field">期限<span className="optional">任意</span><input name="dueDate" type="date" /></label></div>
-      <div className="modal-actions"><button type="button" onClick={onCancel}>キャンセル</button><button type="submit" className="primary">{saving ? '保存中…' : 'タスクを追加'}</button></div>
+      <label className="field">タイトル<span className="required">必須</span><input defaultValue={task?.title} name="title" placeholder="例：画面のデザインを確認する" aria-required="true" /></label>
+      <label className="field">説明文<span className="optional">任意</span><textarea defaultValue={task?.description ?? ""} name="description" placeholder="詳しい内容やメモを入力" /></label>
+      <div className="field-row"><label className="field">優先度<select name="priority" defaultValue={task?.priority ?? "medium"}><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></label><label className="field">期限<span className="optional">任意</span><input defaultValue={task?.dueDate ?? ""} name="dueDate" type="date" /></label></div>
+      <div className="modal-actions"><button type="button" onClick={onCancel}>キャンセル</button><button type="submit" className="primary">{saving ? '保存中…' : task ? '変更を保存' : 'タスクを追加'}</button></div>
     </fieldset>
   </form>
 }

@@ -19,6 +19,7 @@ export function App() {
   const [conditions, setConditions] = useState<SearchConditions>(emptyConditions)
   const [reload, setReload] = useState(0)
   const [modal, setModal] = useState<'add' | Task | null>(null)
+  const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const dialog = useRef<HTMLDialogElement>(null)
@@ -45,15 +46,17 @@ export function App() {
     if (!element) return
     if (!element.open) element.showModal()
     // 内容の描画後に開き、追加時はタイトル、詳細時は閉じるボタンへフォーカス。
-    element.querySelector<HTMLElement>(modal === 'add' ? '[name="title"]' : '.icon-button')?.focus()
-  }, [modal])
+    element.querySelector<HTMLElement>(modal === 'add' || editing ? '[name="title"]' : '.icon-button')?.focus()
+  }, [modal, editing])
 
   function openModal(view: 'add' | Task) {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setEditing(false)
     setModal(view)
   }
 
   function closeModal() {
+    setEditing(false)
     setModal(null)
     opener.current?.focus()
   }
@@ -78,7 +81,7 @@ export function App() {
         {filtered && <p className="active-search">検索条件：{conditions.q ? `「${conditions.q}」` : 'タイトル指定なし'} · {statusLabel}<button type="button" onClick={clear}>クリア</button></p>}
         {error && <div role="alert" className="notice">{error}<button type="button" onClick={() => setReload((value) => value + 1)}>もう一度取得</button></div>}
         {saved && <p role="status">タスクを追加しました。検索条件を解除して全件を表示しています。</p>}
-        <TaskBoard tasks={tasks} loading={loading} error={Boolean(error)} filtered={filtered} today={localToday()} onOpen={openModal} />
+        <TaskBoard tasks={tasks} loading={loading} error={Boolean(error)} filtered={filtered} today={localToday()} onOpen={openModal} onChanged={() => setReload((value) => value + 1)} />
         <p className="board-tip">カードをクリックして詳細を確認。各列で優先度・期限の並べ替えができます。</p>
         <details className="search-panel">
           <summary>タスクを検索{filtered ? '（条件を適用中）' : ''}</summary>
@@ -90,8 +93,8 @@ export function App() {
           </form>
         </details>
       </main>
-      <dialog ref={dialog} aria-labelledby="dialog-title" onClose={closeModal} onCancel={(event) => { event.preventDefault(); if (!saving) dialog.current?.close() }}>
-        <div className="modal-header"><div><p className="eyebrow">{modal === 'add' ? 'NEW TASK' : 'TASK DETAILS'}</p><h2 id="dialog-title">{modal === 'add' ? 'タスクを追加' : 'タスクの詳細'}</h2></div><button type="button" className="icon-button" aria-label="閉じる" disabled={saving} onClick={() => dialog.current?.close()}>×</button></div>
+      <dialog ref={dialog} aria-labelledby="dialog-title" onClose={closeModal} onCancel={(event) => { event.preventDefault(); if (!saving) { if (editing) setEditing(false); else dialog.current?.close() } }}>
+        <div className="modal-header"><div><p className="eyebrow">{modal === 'add' ? 'NEW TASK' : editing ? 'EDIT TASK' : 'TASK DETAILS'}</p><h2 id="dialog-title">{modal === 'add' ? 'タスクを追加' : editing ? 'タスクを編集' : 'タスクの詳細'}</h2></div><button type="button" className="icon-button" aria-label="閉じる" disabled={saving} onClick={() => { if (editing) setEditing(false); else dialog.current?.close() }}>×</button></div>
         <div id="dialog-content">
           {modal === 'add' && <CreateTaskForm onBusy={setSaving} onCancel={() => dialog.current?.close()} onSaved={() => {
             setSaved(true)
@@ -99,12 +102,17 @@ export function App() {
             setConditions({ ...emptyConditions })
             dialog.current?.close()
           }} />}
-          {selectedTask && <>
+          {selectedTask && editing && <CreateTaskForm task={selectedTask} onBusy={setSaving} onCancel={() => setEditing(false)} onSaved={(task) => {
+            if (task) setModal(task)
+            setEditing(false)
+            setReload((value) => value + 1)
+          }} />}
+          {selectedTask && !editing && <>
             <h3 className="task-title">{selectedTask.title}</h3>
             <dl className="detail-meta"><div><dt>ステータス</dt><dd>{columns.find((column) => column.status === selectedTask.status)?.label}</dd></div><div><dt>優先度</dt><dd><span className={`priority ${selectedTask.priority}`}>{priorityLabels[selectedTask.priority]}</span></dd></div><div><dt>期限</dt><dd>{selectedTask.dueDate?.replaceAll('-', '/') ?? '期限なし'}</dd></div></dl>
             <p className="description-label">説明文</p><p className="description">{selectedTask.description || '説明文はありません。'}</p>
-            <p className="feature-note">編集・削除機能は準備中です。</p>
-            <div className="modal-actions"><button type="button" className="danger-text push-left" disabled>削除</button><button type="button" onClick={() => dialog.current?.close()}>閉じる</button><button type="button" className="primary" disabled>編集する</button></div>
+            <p className="feature-note">削除機能は準備中です。</p>
+            <div className="modal-actions"><button type="button" className="danger-text push-left" disabled>削除</button><button type="button" onClick={() => dialog.current?.close()}>閉じる</button><button type="button" className="primary" onClick={() => setEditing(true)}>編集する</button></div>
           </>}
         </div>
       </dialog>

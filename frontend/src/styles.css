@@ -29,3 +29,16 @@ dialog { margin: auto; }
 .card-skeleton { height: 135px; border-radius: 9px; background: #ffffff99; }
 
 }
+
+@layer components { .drop-enabled { outline: 2px dashed #92b9ad; outline-offset: -3px; } .card[draggable="true"] { cursor: grab; } .card[draggable="true"]:active { cursor: grabbing; } }
+
+@layer components {
+  .insertion-before::before, .insertion-after::after, .drop-empty .card-list::before {
+    content: ''; position: absolute; left: 0; right: 0; height: 3px;
+    border-radius: 3px; background: #2563eb; pointer-events: none;
+  }
+  .insertion-before::before { top: -8px; }
+  .insertion-after::after { bottom: -8px; }
+  .drop-empty .card-list { position: relative; }
+  .drop-empty .card-list::before { top: 2px; }
+}

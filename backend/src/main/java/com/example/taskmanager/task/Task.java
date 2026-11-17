@@ -34,6 +34,14 @@ public class Task {
         this.sortOrder = sortOrder;
     }
 
+    void update(String title, String description, String priority, LocalDate dueDate) {
+        this.title = title; this.description = description; this.priority = priority; this.dueDate = dueDate;
+    }
+
+    void place(String status, int order) { this.status = status; this.sortOrder = order; }
+    UUID taskId() { return id; }
+    String taskStatus() { return status; }
+
     TaskResponse response() {
         return new TaskResponse(id, title, description, priority, dueDate, status, sortOrder);
     }

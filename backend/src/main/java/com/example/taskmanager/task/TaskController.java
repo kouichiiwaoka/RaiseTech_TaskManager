@@ -2,6 +2,8 @@ package com.example.taskmanager.task;
 
 import java.util.List;
 import java.net.URI;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,6 +24,16 @@ public class TaskController {
 
     public TaskController(TaskService service) {
         this.service = service;
+    }
+
+    @PutMapping("/{id}")
+    public TaskResponse update(@PathVariable UUID id, @RequestBody CreateTaskRequest request) {
+        return service.update(id, request);
+    }
+
+    @PatchMapping("/{id}/position")
+    public TaskResponse move(@PathVariable UUID id, @RequestBody MoveTaskRequest request) {
+        return service.move(id, request);
     }
 
     @PostMapping
