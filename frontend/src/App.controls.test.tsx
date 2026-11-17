@@ -52,7 +52,7 @@ describe('配置変更後のボタン操作', () => {
     expect(within(dialog).getByRole('heading', { name: sampleTasks[0].title })).toBeVisible()
     expect(within(dialog).getByText('説明文はありません。')).toBeVisible()
     expect(within(dialog).getByRole('button', { name: '削除' })).toBeDisabled()
-    expect(within(dialog).getByRole('button', { name: '編集する' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: '編集する' })).toBeEnabled()
     const closeButtons = within(dialog).getAllByRole('button', { name: '閉じる' })
     expect(closeButtons[0]).toHaveFocus()
     await user.click(closeButtons[1])

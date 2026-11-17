@@ -14,7 +14,7 @@ Reactの画面からSpring BootのAPIを呼び出し、PostgreSQLに保存され
 - WebフォームからPOST APIを通じてタスクを新規登録し、DBへ保存
 - APIによる一覧・検索・UUID指定の詳細取得
 
-並べ替えは画面内のみで保持し、再読み込みで解除されます。追加モーダルから登録できます。新規タスクは未着手の末尾へ保存され、再読み込み後も取得できます。編集・削除、ドラッグ＆ドロップ、ソート条件・設定の永続化は今後の実装範囲です。
+並べ替えは画面内のみで保持し、再読み込みで解除されます。追加モーダルから登録できます。新規タスクは未着手の末尾へ保存され、再読み込み後も取得できます。編集とドラッグ＆ドロップによる進捗・列内順序の保存も利用できます。削除とソート条件・設定の永続化は今後の実装範囲です。
 
 ## 技術構成
 
@@ -129,6 +129,8 @@ DBのデータは名前付きボリュームに保持されます。再開は上
 
 ## テスト・ビルド
 
+実行前に[テスト運用ルール](テスト運用ルール.md)を読み、[plan-and-run-tests](skills/plan-and-run-tests/SKILL.md)で項目と期待結果・不足を確認します。既存項目の省略理由と実施結果はIssue・PRに残します。
+
 ### フロントエンド
 
 プロジェクト直下から実行します。DBの起動は不要です。
@@ -141,7 +143,7 @@ npm run lint
 npm run build
 ```
 
-検索・取得失敗・古い応答の無視・列ごとの並べ替え・モーダルなどを自動テストで検証します。既存の確認結果は41件成功です。ブラウザ固有動作の未確認事項は[フロントエンドREADME](frontend/README.md)を参照してください。
+検索・取得失敗・古い応答の無視・列ごとの並べ替え・モーダルなどを自動テストで検証します。実施結果・未確認事項は対応するIssue・PRに記録します。
 
 ビルド結果は `frontend/dist/` に生成します。`npm run preview` は静的ビルドの確認用で、APIプロキシは設定していません。API連携の確認には開発サーバーを使用します。
 
@@ -154,7 +156,7 @@ cd backend
 DB_HOST=127.0.0.1 DB_PORT=5432 GRADLE_USER_HOME=/private/tmp/taskmanager-gradle ./gradlew test bootJar
 ```
 
-実PostgreSQLを使用してAPI・DBアクセスを確認し、JARを生成します。詳細と既存の確認結果は[バックエンドREADME](backend/README.md)を参照してください。
+実PostgreSQLを使用してAPI・DBアクセスを確認し、JARを生成します。詳細な実行方法は[バックエンドREADME](backend/README.md)を参照してください。
 
 ## ディレクトリ構成
 
@@ -164,12 +166,16 @@ DB_HOST=127.0.0.1 DB_PORT=5432 GRADLE_USER_HOME=/private/tmp/taskmanager-gradle 
 ├── backend/        Spring Boot、DBマイグレーション、HTTP統合テスト
 ├── prototype/      合意済み画面の確認用デモ
 ├── scripts/        ローカルDBの初期設定
-├── skills/         統一起動スキルの正本
+├── skills/         起動・文書編集・テストのスキルの正本
 ├── compose.yaml    PostgreSQLのローカル実行設定
 └── *.md            要件・設計・受入条件・開発ルール
 ```
 
 `prototype/` はlocalStorageを使う画面確認用デモです。実アプリの `frontend/` とはデータも保存方法も異なります。
+
+## 文書を更新するとき
+
+作成・編集前に[文書運用ルール](文書運用ルール.md)を読み、[edit-project-docs](skills/edit-project-docs/SKILL.md)に従います。実行結果の履歴はREADMEへ追記せず、Issue・PRへ記録します。
 
 ## 関連文書
 
@@ -191,3 +197,5 @@ DB_HOST=127.0.0.1 DB_PORT=5432 GRADLE_USER_HOME=/private/tmp/taskmanager-gradle 
 起動するにはこのREADME、全体を学ぶには学習メモ、個別の操作・API仕様にはfrontendとbackendのREADME、フロントの設計意図には実装のポイントを参照してください。
 
 要件・設計・受入条件には今後の実装予定も含みます。現在利用できる機能は、このREADMEの「現在できること」と各実装のREADMEを参照してください。
+
+編集とドラッグ移動の現在の操作・制限は[フロントエンドREADME](frontend/README.md)、PUT・PATCHの仕様は[バックエンドREADME](backend/README.md)を参照してください。

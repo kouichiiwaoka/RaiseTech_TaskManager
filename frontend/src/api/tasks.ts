@@ -58,3 +58,20 @@ export async function createTask(input: CreateTaskInput): Promise<void> {
     throw new Error(response.status === 400 ? '入力内容を確認してください。タイトルは1〜255文字、優先度と期限は有効な値を指定してください。' : '保存に失敗しました。入力内容を保持しています。時間をおいて再試行してください。')
   }
 }
+
+export async function updateTask(id: string, input: CreateTaskInput): Promise<Task> {
+  return writeTask(`/api/tasks/${id}`, 'PUT', input)
+}
+export async function moveTask(id: string, status: string, beforeId: string | null): Promise<Task> {
+  return writeTask(`/api/tasks/${id}/position`, 'PATCH', { status, beforeId })
+}
+async function writeTask(url: string, method: string, input: unknown): Promise<Task> {
+  let response: Response
+  try {
+    response = await fetch(url, { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(input), signal: AbortSignal.timeout(15_000) })
+  } catch { throw new Error('保存結果を確認できません。再取得して状態を確認してください。') }
+  if (!response.ok) throw new Error(response.status === 400 ? '入力内容を確認してください。' : response.status === 404 ? 'タスクが見つかりません。再取得してください。' : '保存できませんでした。再取得してから再試行してください。')
+  const task: unknown = await response.json()
+  if (!isTask(task)) throw new Error('保存結果を確認できません。再取得してください。')
+  return task
+}
