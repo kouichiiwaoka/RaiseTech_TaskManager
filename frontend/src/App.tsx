@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { TaskBoard } from './components/TaskBoard'
+import { DeleteTaskConfirm } from './components/DeleteTaskConfirm'
 import { CreateTaskForm } from './components/CreateTaskForm'
+import { deleteTask, fetchAppSettings } from './api/tasks'
 import { useTasks } from './hooks/useTasks'
 import { columns } from './types'
 import type { SearchConditions, Task, TaskStatus } from './types'
@@ -19,6 +21,10 @@ export function App() {
   const [conditions, setConditions] = useState<SearchConditions>(emptyConditions)
   const [reload, setReload] = useState(0)
   const [modal, setModal] = useState<'add' | Task | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+  const deletePending = useRef(false)
+  const [deleted, setDeleted] = useState(false)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -46,19 +52,52 @@ export function App() {
     if (!element) return
     if (!element.open) element.showModal()
     // 内容の描画後に開き、追加時はタイトル、詳細時は閉じるボタンへフォーカス。
-    element.querySelector<HTMLElement>(modal === 'add' || editing ? '[name="title"]' : '.icon-button')?.focus()
-  }, [modal, editing])
+    element.querySelector<HTMLElement>(deleting ? '[data-delete-cancel]' : modal === 'add' || editing ? '[name="title"]' : '.icon-button')?.focus()
+  }, [modal, editing, deleting])
 
   function openModal(view: 'add' | Task) {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     setEditing(false)
+    setDeleting(false)
+    setDeleteError('')
+    setDeleted(false)
     setModal(view)
   }
 
   function closeModal() {
     setEditing(false)
+    setDeleting(false)
     setModal(null)
-    opener.current?.focus()
+    if (opener.current?.isConnected) opener.current.focus()
+    else document.querySelector<HTMLElement>('.reload-button')?.focus()
+  }
+
+  function deletedSuccessfully() {
+    setSaved(false)
+    setDeleted(true)
+    dialog.current?.close()
+    setReload((value) => value + 1)
+    document.querySelector<HTMLElement>('button.primary')?.focus()
+  }
+
+  async function requestDeletion(task: Task) {
+    if (deletePending.current) return
+    deletePending.current = true
+    setSaving(true)
+    setDeleteError('')
+    try {
+      const settings = await fetchAppSettings()
+      if (settings.confirmDelete) setDeleting(true)
+      else {
+        await deleteTask(task.id)
+        deletedSuccessfully()
+      }
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : '削除できませんでした。')
+    } finally {
+      deletePending.current = false
+      setSaving(false)
+    }
   }
 
   return (
@@ -81,6 +120,7 @@ export function App() {
         {filtered && <p className="active-search">検索条件：{conditions.q ? `「${conditions.q}」` : 'タイトル指定なし'} · {statusLabel}<button type="button" onClick={clear}>クリア</button></p>}
         {error && <div role="alert" className="notice">{error}<button type="button" onClick={() => setReload((value) => value + 1)}>もう一度取得</button></div>}
         {saved && <p role="status">タスクを追加しました。検索条件を解除して全件を表示しています。</p>}
+        {deleted && <p role="status">タスクを削除しました。</p>}
         <TaskBoard tasks={tasks} loading={loading} error={Boolean(error)} filtered={filtered} today={localToday()} onOpen={openModal} onChanged={() => setReload((value) => value + 1)} />
         <p className="board-tip">カードをクリックして詳細を確認。各列で優先度・期限の並べ替えができます。</p>
         <details className="search-panel">
@@ -93,8 +133,8 @@ export function App() {
           </form>
         </details>
       </main>
-      <dialog ref={dialog} aria-labelledby="dialog-title" onClose={closeModal} onCancel={(event) => { event.preventDefault(); if (!saving) { if (editing) setEditing(false); else dialog.current?.close() } }}>
-        <div className="modal-header"><div><p className="eyebrow">{modal === 'add' ? 'NEW TASK' : editing ? 'EDIT TASK' : 'TASK DETAILS'}</p><h2 id="dialog-title">{modal === 'add' ? 'タスクを追加' : editing ? 'タスクを編集' : 'タスクの詳細'}</h2></div><button type="button" className="icon-button" aria-label="閉じる" disabled={saving} onClick={() => { if (editing) setEditing(false); else dialog.current?.close() }}>×</button></div>
+      <dialog ref={dialog} aria-labelledby="dialog-title" onClose={closeModal} onCancel={(event) => { event.preventDefault(); if (!saving) { if (deleting) setDeleting(false); else if (editing) setEditing(false); else dialog.current?.close() } }}>
+        <div className="modal-header"><div><p className="eyebrow">{modal === 'add' ? 'NEW TASK' : deleting ? 'DELETE TASK' : editing ? 'EDIT TASK' : 'TASK DETAILS'}</p><h2 id="dialog-title">{modal === 'add' ? 'タスクを追加' : deleting ? 'タスクを削除しますか？' : editing ? 'タスクを編集' : 'タスクの詳細'}</h2></div><button type="button" className="icon-button" aria-label="閉じる" disabled={saving} onClick={() => { if (deleting) setDeleting(false); else if (editing) setEditing(false); else dialog.current?.close() }}>×</button></div>
         <div id="dialog-content">
           {modal === 'add' && <CreateTaskForm onBusy={setSaving} onCancel={() => dialog.current?.close()} onSaved={() => {
             setSaved(true)
@@ -107,12 +147,14 @@ export function App() {
             setEditing(false)
             setReload((value) => value + 1)
           }} />}
-          {selectedTask && !editing && <>
+          {selectedTask && deleting && <DeleteTaskConfirm task={selectedTask} onBusy={setSaving} onCancel={() => setDeleting(false)} onDeleted={deletedSuccessfully} />}
+          {selectedTask && !editing && !deleting && <>
             <h3 className="task-title">{selectedTask.title}</h3>
             <dl className="detail-meta"><div><dt>ステータス</dt><dd>{columns.find((column) => column.status === selectedTask.status)?.label}</dd></div><div><dt>優先度</dt><dd><span className={`priority ${selectedTask.priority}`}>{priorityLabels[selectedTask.priority]}</span></dd></div><div><dt>期限</dt><dd>{selectedTask.dueDate?.replaceAll('-', '/') ?? '期限なし'}</dd></div></dl>
             <p className="description-label">説明文</p><p className="description">{selectedTask.description || '説明文はありません。'}</p>
-            <p className="feature-note">削除機能は準備中です。</p>
-            <div className="modal-actions"><button type="button" className="danger-text push-left" disabled>削除</button><button type="button" onClick={() => dialog.current?.close()}>閉じる</button><button type="button" className="primary" onClick={() => setEditing(true)}>編集する</button></div>
+            {deleteError && <p className="notice" role="alert">{deleteError}</p>}
+            {saving && <p role="status">削除を処理中…</p>}
+            <div className="modal-actions"><button type="button" className="danger-text push-left" disabled={saving} onClick={() => void requestDeletion(selectedTask)}>削除</button><button type="button" disabled={saving} onClick={() => dialog.current?.close()}>閉じる</button><button type="button" className="primary" disabled={saving} onClick={() => setEditing(true)}>編集する</button></div>
           </>}
         </div>
       </dialog>

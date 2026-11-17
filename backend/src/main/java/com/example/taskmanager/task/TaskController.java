@@ -26,6 +26,13 @@ public class TaskController {
         this.service = service;
     }
 
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id,
+                                       @RequestParam(defaultValue = "false") boolean skipConfirmation) {
+        service.delete(id, skipConfirmation);
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/{id}")
     public TaskResponse update(@PathVariable UUID id, @RequestBody CreateTaskRequest request) {
         return service.update(id, request);

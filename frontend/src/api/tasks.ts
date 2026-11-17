@@ -75,3 +75,33 @@ async function writeTask(url: string, method: string, input: unknown): Promise<T
   if (!isTask(task)) throw new Error('保存結果を確認できません。再取得してください。')
   return task
 }
+
+export async function deleteTask(id: string, skipConfirmation = false): Promise<void> {
+  let response: Response
+  try {
+    response = await fetch(`/api/tasks/${encodeURIComponent(id)}${skipConfirmation ? "?skipConfirmation=true" : ""}`, {
+      method: 'DELETE', signal: AbortSignal.timeout(15_000),
+    })
+  } catch {
+    throw new Error('削除結果を確認できません。詳細を閉じて再取得し、タスクが残っているか確認してください。')
+  }
+  if (response.status === 404) throw new Error('タスクが見つかりません。詳細を閉じて再取得してください。')
+  if (!response.ok) throw new Error('削除できませんでした。時間をおいて再試行してください。')
+  if (response.status !== 204) throw new Error('削除結果を確認できません。詳細を閉じて再取得してください。')
+}
+
+export async function fetchAppSettings(): Promise<{ confirmDelete: boolean }> {
+  try {
+    const response = await fetch('/api/settings', {
+      headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(15_000),
+    })
+    if (!response.ok) throw new Error('settings unavailable')
+    const data: unknown = await response.json()
+    if (typeof data !== 'object' || data === null || !('confirmDelete' in data) || typeof data.confirmDelete !== 'boolean') {
+      throw new Error('invalid settings')
+    }
+    return { confirmDelete: data.confirmDelete }
+  } catch {
+    throw new Error('削除確認の設定を取得できませんでした。時間をおいて再試行してください。タスクは削除していません。')
+  }
+}

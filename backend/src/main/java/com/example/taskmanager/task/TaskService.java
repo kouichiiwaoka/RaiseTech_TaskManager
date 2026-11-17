@@ -91,6 +91,25 @@ public class TaskService {
         return task.response();
     }
 
+    @Transactional
+    public void delete(UUID id, boolean skipConfirmation) {
+        // 登録・編集・移動と同じロックを取り、削除との競合を直列化する。
+        jdbc.execute("SELECT pg_advisory_xact_lock(11001)");
+        repository.delete(required(id));
+        repository.flush();
+        if (skipConfirmation) {
+            int updated = jdbc.update("UPDATE app_setting SET confirm_delete = false WHERE id = 1");
+            if (updated != 1) {
+                throw new IllegalStateException("App setting row is missing");
+            }
+        }
+    }
+
+    public AppSettingsResponse settings() {
+        return new AppSettingsResponse(Boolean.TRUE.equals(jdbc.queryForObject(
+                "SELECT confirm_delete FROM app_setting WHERE id = 1", Boolean.class)));
+    }
+
     private Task required(UUID id) {
         return repository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
     }
