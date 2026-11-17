@@ -119,3 +119,22 @@ describe('タスクの物理削除', () => {
     expect(screen.getByRole('button', { name: '未着手を優先度の降順に並べ替える' })).toHaveAttribute('aria-pressed', 'true')
   })
 })
+
+it('非同期のcloseイベント後も削除成功のフォーカスを追加ボタンへ戻す', async () => {
+  vi.spyOn(HTMLDialogElement.prototype, 'close').mockImplementation(function (this: HTMLDialogElement) {
+    this.removeAttribute('open')
+    window.setTimeout(() => this.dispatchEvent(new Event('close')), 0)
+  })
+  vi.stubGlobal('fetch', vi.fn((url: string, request?: RequestInit) => Promise.resolve(
+    url === '/api/settings' ? jsonResponse({ confirmDelete: true }) : request?.method === 'DELETE'
+      ? new Response(null, { status: 204 }) : jsonResponse(sampleTasks.slice(1)),
+  )))
+  // 最初の取得だけ対象を含める。
+  const mock = vi.mocked(fetch)
+  mock.mockResolvedValueOnce(jsonResponse(sampleTasks))
+  render(<App />)
+  const user = await openConfirm()
+  await user.click(screen.getByRole('button', { name: '削除する' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await waitFor(() => expect(screen.getByRole('button', { name: '＋ タスクを追加' })).toHaveFocus())
+})

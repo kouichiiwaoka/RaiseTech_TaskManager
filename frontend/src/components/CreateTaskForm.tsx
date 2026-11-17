@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Task } from '../types'
+import { normalizeTitle } from '../normalizeTitle'
 import { createTask, updateTask } from '../api/tasks'
 
 export function CreateTaskForm({ onSaved, onCancel, onBusy, task }: {
@@ -15,7 +16,7 @@ export function CreateTaskForm({ onSaved, onCancel, onBusy, task }: {
     if (pending.current) return
     const form = event.currentTarget
     const fields = new FormData(form)
-    const title = String(fields.get('title') ?? '').trim()
+    const title = normalizeTitle(String(fields.get('title') ?? ''))
     if (!title || Array.from(title).length > 255) {
       setError('タイトルを1〜255文字で入力してください。空白のみでは登録できません。')
       form.querySelector<HTMLInputElement>('[name="title"]')?.focus()

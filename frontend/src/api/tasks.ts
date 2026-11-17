@@ -6,8 +6,8 @@ function isTask(value: unknown): value is Task {
   return typeof task.id === 'string'
     && typeof task.title === 'string'
     && (task.description === null || typeof task.description === 'string')
-    && ['high', 'medium', 'low'].includes(String(task.priority))
-    && ['todo', 'doing', 'done'].includes(String(task.status))
+    && typeof task.priority === 'string' && ['high', 'medium', 'low'].includes(task.priority)
+    && typeof task.status === 'string' && ['todo', 'doing', 'done'].includes(task.status)
     && (task.dueDate === null || (typeof task.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(task.dueDate)))
     && Number.isInteger(task.sortOrder) && Number(task.sortOrder) >= 0
 }
@@ -57,6 +57,7 @@ export async function createTask(input: CreateTaskInput): Promise<void> {
   if (!response.ok) {
     throw new Error(response.status === 400 ? '入力内容を確認してください。タイトルは1〜255文字、優先度と期限は有効な値を指定してください。' : '保存に失敗しました。入力内容を保持しています。時間をおいて再試行してください。')
   }
+  if (response.status !== 201) throw new Error('保存結果を確認できませんでした。一度閉じて再取得し、追加済みでないことを確認してから再試行してください。')
 }
 
 export async function updateTask(id: string, input: CreateTaskInput): Promise<Task> {
@@ -71,7 +72,12 @@ async function writeTask(url: string, method: string, input: unknown): Promise<T
     response = await fetch(url, { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(input), signal: AbortSignal.timeout(15_000) })
   } catch { throw new Error('保存結果を確認できません。再取得して状態を確認してください。') }
   if (!response.ok) throw new Error(response.status === 400 ? '入力内容を確認してください。' : response.status === 404 ? 'タスクが見つかりません。再取得してください。' : '保存できませんでした。再取得してから再試行してください。')
-  const task: unknown = await response.json()
+  let task: unknown
+  try {
+    task = await response.json()
+  } catch {
+    throw new Error('保存結果を確認できません。再取得して状態を確認してください。')
+  }
   if (!isTask(task)) throw new Error('保存結果を確認できません。再取得してください。')
   return task
 }
