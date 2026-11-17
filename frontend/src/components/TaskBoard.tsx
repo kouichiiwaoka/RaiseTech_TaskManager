@@ -20,6 +20,7 @@ function compare(a: Task, b: Task, sort: Sort) {
 export function TaskBoard({ tasks, loading, error, filtered, today, onOpen, onChanged }: {
   tasks: Task[]; loading: boolean; error: boolean; filtered: boolean; today: string; onChanged?: () => void; onOpen: (task: Task) => void
 }) {
+  const [previousTasks, setPreviousTasks] = useState(tasks)
   const [sorts, setSorts] = useState<Partial<Record<TaskStatus, Sort>>>({})
 
   const [dragging, setDragging] = useState<string | null>(null)
@@ -28,6 +29,18 @@ export function TaskBoard({ tasks, loading, error, filtered, today, onOpen, onCh
   const [moveError, setMoveError] = useState('')
   const pending = useRef(false)
   const disabled = loading || error || filtered || moving
+
+  // 成功した取得結果が変わるときだけ、変更直前に表示していた順序を記録する。
+  if (!loading && !error && tasks !== previousTasks) {
+    setPreviousTasks(tasks)
+    setSorts((current) => Object.fromEntries(Object.entries(current).map(([status, sort]) => {
+      const positions = new Map(sort.previousOrder.map((id, index) => [id, index]))
+      const prior = previousTasks.filter((task) => task.status === status)
+        .sort((a, b) => compare(a, b, sort)
+          || (positions.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (positions.get(b.id) ?? Number.MAX_SAFE_INTEGER))
+      return [status, { ...sort, previousOrder: prior.map((task) => task.id) }]
+    })))
+  }
 
   function locate(event: DragEvent<HTMLElement>, status: TaskStatus) {
     if (!dragging || disabled || pending.current) return null
@@ -87,7 +100,7 @@ export function TaskBoard({ tasks, loading, error, filtered, today, onOpen, onCh
         const selected = sorts[column.status]
         const items = tasks.filter((task) => task.status === column.status)
         if (selected) {
-          // 同順位では、APIの元順ではなく直前の画面上の順序を維持する。
+          // 同順位では、APIの元順ではなく直前の成功表示の順序を使う。
           const positions = new Map(selected.previousOrder.map((id, index) => [id, index]))
           items.sort((a, b) => compare(a, b, selected)
             || (positions.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (positions.get(b.id) ?? Number.MAX_SAFE_INTEGER))

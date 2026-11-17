@@ -28,6 +28,8 @@ export function App() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const addButton = useRef<HTMLButtonElement>(null)
+  const reloadButton = useRef<HTMLButtonElement>(null)
   const dialog = useRef<HTMLDialogElement>(null)
   const opener = useRef<HTMLElement | null>(null)
   const { tasks, loading, error } = useTasks(conditions, reload)
@@ -69,15 +71,15 @@ export function App() {
     setDeleting(false)
     setModal(null)
     if (opener.current?.isConnected) opener.current.focus()
-    else document.querySelector<HTMLElement>('.reload-button')?.focus()
+    else reloadButton.current?.focus()
   }
 
   function deletedSuccessfully() {
     setSaved(false)
     setDeleted(true)
+    opener.current = addButton.current
     dialog.current?.close()
     setReload((value) => value + 1)
-    document.querySelector<HTMLElement>('button.primary')?.focus()
   }
 
   async function requestDeletion(task: Task) {
@@ -109,13 +111,13 @@ export function App() {
       <main>
         <section className="board-heading">
           <div><p className="eyebrow">MY WORKSPACE</p><h1>マイタスク</h1><p className="intro">やることを整理して、今日の一歩を進めよう。</p></div>
-          <button type="button" className="primary" onClick={() => openModal('add')}>＋ タスクを追加</button>
+          <button type="button" ref={addButton} className="primary" onClick={() => openModal('add')}>＋ タスクを追加</button>
         </section>
         <div className="board-meta">
           <p role="status" aria-live="polite" aria-atomic="true">
             {loading ? 'タスクを読み込み中…' : error ? 'タスクを取得できませんでした' : `${filtered ? '検索結果：' : ''}${tasks.length}件のタスク · ${tasks.filter((task) => task.status === 'done').length}件完了`}
           </p>
-          <p className={`fetch-status ${error ? 'fetch-failed' : ''}`}><span>{loading ? '取得中' : error ? '取得失敗' : '取得済み'}</span><button type="button" className="reload-button" disabled={loading} onClick={() => setReload((value) => value + 1)}>再取得</button></p>
+          <p className={`fetch-status ${error ? 'fetch-failed' : ''}`}><span>{loading ? '取得中' : error ? '取得失敗' : '取得済み'}</span><button type="button" ref={reloadButton} className="reload-button" disabled={loading} onClick={() => setReload((value) => value + 1)}>再取得</button></p>
         </div>
         {filtered && <p className="active-search">検索条件：{conditions.q ? `「${conditions.q}」` : 'タイトル指定なし'} · {statusLabel}<button type="button" onClick={clear}>クリア</button></p>}
         {error && <div role="alert" className="notice">{error}<button type="button" onClick={() => setReload((value) => value + 1)}>もう一度取得</button></div>}
