@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { TaskBoard } from './components/TaskBoard'
+import { CreateTaskForm } from './components/CreateTaskForm'
 import { useTasks } from './hooks/useTasks'
 import { columns } from './types'
 import type { SearchConditions, Task, TaskStatus } from './types'
@@ -18,6 +19,8 @@ export function App() {
   const [conditions, setConditions] = useState<SearchConditions>(emptyConditions)
   const [reload, setReload] = useState(0)
   const [modal, setModal] = useState<'add' | Task | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
   const dialog = useRef<HTMLDialogElement>(null)
   const opener = useRef<HTMLElement | null>(null)
   const { tasks, loading, error } = useTasks(conditions, reload)
@@ -27,6 +30,7 @@ export function App() {
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setSaved(false)
     setConditions({ ...draft, q: draft.q.trim() })
   }
 
@@ -73,6 +77,7 @@ export function App() {
         </div>
         {filtered && <p className="active-search">検索条件：{conditions.q ? `「${conditions.q}」` : 'タイトル指定なし'} · {statusLabel}<button type="button" onClick={clear}>クリア</button></p>}
         {error && <div role="alert" className="notice">{error}<button type="button" onClick={() => setReload((value) => value + 1)}>もう一度取得</button></div>}
+        {saved && <p role="status">タスクを追加しました。検索条件を解除して全件を表示しています。</p>}
         <TaskBoard tasks={tasks} loading={loading} error={Boolean(error)} filtered={filtered} today={localToday()} onOpen={openModal} />
         <p className="board-tip">カードをクリックして詳細を確認。各列で優先度・期限の並べ替えができます。</p>
         <details className="search-panel">
@@ -85,16 +90,15 @@ export function App() {
           </form>
         </details>
       </main>
-      <dialog ref={dialog} aria-labelledby="dialog-title" onClose={closeModal} onCancel={(event) => { event.preventDefault(); dialog.current?.close() }}>
-        <div className="modal-header"><div><p className="eyebrow">{modal === 'add' ? 'NEW TASK' : 'TASK DETAILS'}</p><h2 id="dialog-title">{modal === 'add' ? 'タスクを追加' : 'タスクの詳細'}</h2></div><button type="button" className="icon-button" aria-label="閉じる" onClick={() => dialog.current?.close()}>×</button></div>
+      <dialog ref={dialog} aria-labelledby="dialog-title" onClose={closeModal} onCancel={(event) => { event.preventDefault(); if (!saving) dialog.current?.close() }}>
+        <div className="modal-header"><div><p className="eyebrow">{modal === 'add' ? 'NEW TASK' : 'TASK DETAILS'}</p><h2 id="dialog-title">{modal === 'add' ? 'タスクを追加' : 'タスクの詳細'}</h2></div><button type="button" className="icon-button" aria-label="閉じる" disabled={saving} onClick={() => dialog.current?.close()}>×</button></div>
         <div id="dialog-content">
-          {modal === 'add' && <form onSubmit={(event) => event.preventDefault()}>
-            <p className="feature-note">追加機能は準備中です。現在はタスクの閲覧をご利用いただけます。</p>
-            <label className="field">タイトル<span className="required">必須</span><input name="title" placeholder="例：画面のデザインを確認する" /></label>
-            <label className="field">説明文<span className="optional">任意</span><textarea name="description" placeholder="詳しい内容やメモを入力" /></label>
-            <div className="field-row"><label className="field">優先度<select name="priority" defaultValue="medium"><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></label><label className="field">期限<span className="optional">任意</span><input name="dueDate" type="date" /></label></div>
-            <div className="modal-actions"><button type="button" onClick={() => dialog.current?.close()}>キャンセル</button><button type="submit" className="primary" disabled>タスクを追加</button></div>
-          </form>}
+          {modal === 'add' && <CreateTaskForm onBusy={setSaving} onCancel={() => dialog.current?.close()} onSaved={() => {
+            setSaved(true)
+            setDraft({ ...emptyConditions })
+            setConditions({ ...emptyConditions })
+            dialog.current?.close()
+          }} />}
           {selectedTask && <>
             <h3 className="task-title">{selectedTask.title}</h3>
             <dl className="detail-meta"><div><dt>ステータス</dt><dd>{columns.find((column) => column.status === selectedTask.status)?.label}</dd></div><div><dt>優先度</dt><dd><span className={`priority ${selectedTask.priority}`}>{priorityLabels[selectedTask.priority]}</span></dd></div><div><dt>期限</dt><dd>{selectedTask.dueDate?.replaceAll('-', '/') ?? '期限なし'}</dd></div></dl>

@@ -36,3 +36,25 @@ export async function fetchTasks(conditions: SearchConditions, signal: AbortSign
   }
   return data
 }
+
+export interface CreateTaskInput {
+  title: string
+  description: string | null
+  priority: 'high' | 'medium' | 'low'
+  dueDate: string | null
+}
+
+export async function createTask(input: CreateTaskInput): Promise<void> {
+  let response: Response
+  try {
+    response = await fetch('/api/tasks', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(input), signal: AbortSignal.timeout(15_000),
+    })
+  } catch {
+    throw new Error('保存結果を確認できませんでした。一度閉じて再取得し、追加済みでないことを確認してから再試行してください。')
+  }
+  if (!response.ok) {
+    throw new Error(response.status === 400 ? '入力内容を確認してください。タイトルは1〜255文字、優先度と期限は有効な値を指定してください。' : '保存に失敗しました。入力内容を保持しています。時間をおいて再試行してください。')
+  }
+}

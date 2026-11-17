@@ -33,7 +33,7 @@ describe('配置変更後のボタン操作', () => {
     expect(dialog).toHaveAttribute('open')
     expect(within(dialog).getByRole('textbox', { name: 'タイトル必須' })).toHaveFocus()
     expect(within(dialog).getByRole('combobox', { name: '優先度' })).toHaveValue('medium')
-    expect(within(dialog).getByRole('button', { name: 'タスクを追加' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'タスクを追加' })).toBeEnabled()
     await user.type(within(dialog).getByRole('textbox', { name: 'タイトル必須' }), '架空の新規タスク')
     if (action === 'cancelイベント') fireEvent(dialog, new Event('cancel', { bubbles: true, cancelable: true }))
     else await user.click(within(dialog).getByRole('button', { name: action }))

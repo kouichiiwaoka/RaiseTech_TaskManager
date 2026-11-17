@@ -53,7 +53,7 @@ Spring Data JPA / Hibernate、PostgreSQL JDBCドライバー、Flywayを導入�
 
 V1では `tasks` テーブルを作成します。IDはUUID、タイトルは255文字以内かつ空白のみを禁止。優先度は `high / medium / low`（初期値 `medium`）、状態は `todo / doing / done`（初期値 `todo`）、期限はDATE、並び順は0以上です。適用済みSQLは変更せず、次のバージョンのSQLを追加してください。
 
-タスクのJPAエンティティとREAD APIを実装済みです。実アプリのフロントエンドとの検索・閲覧連携も実装済みです。書き込みAPIとアプリ設定テーブルは今後の実装です。`prototype/`は独立した画面確認用デモで、APIとは接続しません。
+タスクのJPAエンティティとREAD APIを実装済みです。実アプリのフロントエンドとの検索・閲覧連携も実装済みです。POSTによる新規登録も実装済みです。更新・削除APIとアプリ設定テーブルは今後の実装です。`prototype/`は独立した画面確認用デモで、APIとは接続しません。
 
 ## 停止と永続化
 
@@ -84,7 +84,7 @@ curl --fail-with-body http://127.0.0.1:8080/api/tasks/00000000-0000-4000-8000-00
 
 一覧の順序は `todo → doing → done`、同じ列では `sortOrder` 昇順、同順位ではUUID昇順です。該当なしは200と `[]`、存在しないUUIDは404、不正なUUID形式は400です。
 
-レスポンスは `id / title / description / priority / dueDate / status / sortOrder` を返します。期限は `YYYY-MM-DD`、未設定の説明・期限は `null` です。一覧はページ分割せず、単一利用者の小規模ボード向けです。画面と書き込みAPIは含みません。
+レスポンスは `id / title / description / priority / dueDate / status / sortOrder` を返します。期限は `YYYY-MM-DD`、未設定の説明・期限は `null` です。一覧はページ分割せず、単一利用者の小規模ボード向けです。一覧API自体は画面を返しません。新規登録APIは次節に記載します。
 
 HTTP統合テストでは実PostgreSQLにランダムUUIDのテスト行を投入し、一覧順序・検索・全項目・null・400・404を実通信で検証します。終了後はそのテストが投入した行だけを除去し、既存データを保持します。実行は上記の `test bootJar` と同じです。この環境の既存Gradleキャッシュは `/private/tmp/taskmanager-gradle` です。別端末では `GRADLE_USER_HOME` の指定は不要です。
 
@@ -93,3 +93,15 @@ HTTP統合テストでは実PostgreSQLにランダムUUIDのテスト行を投�
 上記の8081による検証記録は過去の実績です。現在の起動ルールではバックエンドは8080に固定し、競合回避に別ポートを使用しません。
 
 画面からこのAPIへ検索条件が渡る流れと、Controller・Service・Repository・DBの役割は[学習メモ](../学習メモ.md)を参照してください。カード選択時の詳細表示は取得済み一覧データを使用し、上記の詳細取得APIは現在の画面からは呼びません。
+
+## 5. タスクの新規登録API
+
+`POST /api/tasks` に `Content-Type: application/json` を指定し、`title / description / priority / dueDate` を送信します。成功時は201 Created、Locationに詳細APIのパス、本文に登録済みのTaskResponseを返します。
+
+```json
+{"title":"架空の新規タスク","description":null,"priority":"medium","dueDate":null}
+```
+
+タイトルは前後空白を除き1〜255文字、priorityは省略・nullでmedium、指定する場合high / medium / lowです。descriptionとdueDateは任意で、期限はYYYY-MM-DDです。不正な入力は400です。IDはサーバーでUUIDを生成し、statusはtodo、sortOrderは未着手の最大値+1（空列なら0）とします。採番と保存を同一トランザクションで行い、PostgreSQLのトランザクション用アドバイザリロックで同時登録を直列化します。整数の採番上限に達した場合は409です。
+
+再読み込み時は既存GET APIで永続化されたデータを取得します。優先度・期限の画面内ソート条件は保存しません。実PostgreSQLの登録・既定値・任意項目・再取得・入力拒否・同時採番を含む全11件のバックエンドテストとJAR生成を確認しました。

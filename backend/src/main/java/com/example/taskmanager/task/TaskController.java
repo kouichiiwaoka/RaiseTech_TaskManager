@@ -1,6 +1,10 @@
 package com.example.taskmanager.task;
 
 import java.util.List;
+import java.net.URI;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -18,6 +22,12 @@ public class TaskController {
 
     public TaskController(TaskService service) {
         this.service = service;
+    }
+
+    @PostMapping
+    public ResponseEntity<TaskResponse> create(@RequestBody CreateTaskRequest request) {
+        TaskResponse result = service.create(request);
+        return ResponseEntity.created(URI.create("/api/tasks/" + result.id())).body(result);
     }
 
     @GetMapping
