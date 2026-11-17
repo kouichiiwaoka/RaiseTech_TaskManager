@@ -24,6 +24,16 @@ public class Task {
 
     protected Task() {}
 
+    Task(String title, String description, String priority, LocalDate dueDate, int sortOrder) {
+        this.id = UUID.randomUUID();
+        this.title = title;
+        this.description = description;
+        this.priority = priority;
+        this.dueDate = dueDate;
+        this.status = "todo";
+        this.sortOrder = sortOrder;
+    }
+
     TaskResponse response() {
         return new TaskResponse(id, title, description, priority, dueDate, status, sortOrder);
     }
