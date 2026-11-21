@@ -23,7 +23,7 @@ description: RaiseTech_TaskManagerのローカル環境を起動・再開し、�
 
 ## 1. プロジェクトと前提を確認
 
-現在の作業場所がRaiseTech_TaskManagerリポジトリであることを確認し、`git rev-parse --show-toplevel` でルートを特定する。そのディレクトリの `AGENTS.md`、`frontend/README.md`、`backend/README.md` を確認する。別プロジェクトで呼び出された場合は対象リポジトリの正規の場所を確認してから移動し、複製やworktreeを作らない。
+現在の作業場所がRaiseTech_TaskManagerリポジトリであることを確認し、`git rev-parse --show-toplevel` でルートを特定する。そのディレクトリの `CLAUDE.md`、`frontend/README.md`、`backend/README.md` を確認する。別プロジェクトで呼び出された場合は対象リポジトリの正規の場所を確認してから移動し、複製やworktreeを作らない。
 
 起動前に `git status --short --branch`、Node/npm、Docker、Java 25、依存関係とローカル設定の存在を確認する。起動だけの依頼ではソースを編集せず、新規Issue・ブランチ・コミット・pushを作らない。
 
@@ -76,7 +76,7 @@ frontend（バックエンドとは別の管理可能な実行セッション）
 TASK_API_TARGET=http://127.0.0.1:8080 npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
 ```
 
-JavaとViteはそれぞれ保持できる実行セッションで動かし、PIDまたはセッションIDと作業ディレクトリを把握する。全環境変数を表示せず、`.env`の認証情報をフロントへ渡さない。標準ポートでの起動に失敗したら、競合・設定・依存サービスを調べる。別ポートに変えて成功扱いしない。
+JavaとViteはそれぞれBashの `run_in_background` で別の実行セッションとして動かし、PIDまたはタスクIDと作業ディレクトリを把握する。全環境変数を表示せず、`.env`の認証情報をフロントへ渡さない。標準ポートでの起動に失敗したら、競合・設定・依存サービスを調べる。別ポートに変えて成功扱いしない。
 
 ## 4. 完了の確認と報告
 

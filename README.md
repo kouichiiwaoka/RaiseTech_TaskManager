@@ -60,7 +60,7 @@ DB → バックエンド → フロントエンドの順で起動します。�
 | API | <http://127.0.0.1:8080/api/tasks> |
 | DB | `127.0.0.1:5432` |
 
-標準ポートは固定です。競合時は別ポートに変更せず、起動元を特定して競合する他プロジェクトのローカルサービスを通常停止します。同じプロジェクトが正常起動済みなら再利用します。詳細は[統一起動スキル](skills/start-frontend-backend/SKILL.md)を参照してください。
+標準ポートは固定です。競合時は別ポートに変更せず、起動元を特定して競合する他プロジェクトのローカルサービスを通常停止します。同じプロジェクトが正常起動済みなら再利用します。詳細は[統一起動スキル](.claude/skills/start-frontend-backend/SKILL.md)を参照してください。
 
 ### 1. DBを起動する
 
@@ -130,7 +130,7 @@ DBのデータは名前付きボリュームに保持されます。再開は上
 
 ## テスト・ビルド
 
-実行前に[テスト運用ルール](テスト運用ルール.md)を読み、[plan-and-run-tests](skills/plan-and-run-tests/SKILL.md)で項目と期待結果・不足を確認します。既存項目の省略理由と実施結果はIssue・PRに残します。
+実行前に[テスト運用ルール](テスト運用ルール.md)を読み、[plan-and-run-tests](.claude/skills/plan-and-run-tests/SKILL.md)で項目と期待結果・不足を確認します。既存項目の省略理由と実施結果はIssue・PRに残します。
 
 ### フロントエンド
 
@@ -167,7 +167,7 @@ DB_HOST=127.0.0.1 DB_PORT=5432 GRADLE_USER_HOME=/private/tmp/taskmanager-gradle 
 ├── backend/        Spring Boot、DBマイグレーション、HTTP統合テスト
 ├── prototype/      合意済み画面の確認用デモ
 ├── scripts/        ローカルDBの初期設定
-├── skills/         起動・文書編集・テストのスキルの正本
+├── .claude/        Claude Codeの設定・フック・スキル（.claude/skills/配下がスキルの正本）
 ├── compose.yaml    PostgreSQLのローカル実行設定
 └── *.md            要件・設計・受入条件・開発ルール
 ```
@@ -176,7 +176,7 @@ DB_HOST=127.0.0.1 DB_PORT=5432 GRADLE_USER_HOME=/private/tmp/taskmanager-gradle 
 
 ## 文書を更新するとき
 
-作成・編集前に[文書運用ルール](文書運用ルール.md)を読み、[edit-project-docs](skills/edit-project-docs/SKILL.md)に従います。実行結果の履歴はREADMEへ追記せず、Issue・PRへ記録します。
+作成・編集前に[文書運用ルール](文書運用ルール.md)を読み、[edit-project-docs](.claude/skills/edit-project-docs/SKILL.md)に従います。実行結果の履歴はREADMEへ追記せず、Issue・PRへ記録します。
 
 ## 関連文書
 
@@ -192,8 +192,8 @@ DB_HOST=127.0.0.1 DB_PORT=5432 GRADLE_USER_HOME=/private/tmp/taskmanager-gradle 
 | [バックエンドREADME](backend/README.md) | DB設定、API仕様、テスト |
 | [学習メモ](学習メモ.md) | 検索からカード表示までの図解、全技術の役割と登場箇所 |
 | [実装のポイント](frontend/実装のポイント.md) | フロントエンドのコード上の工夫と設計意図 |
-| [統一起動スキル](skills/start-frontend-backend/SKILL.md) | 標準ポートでの起動と競合解消 |
-| [Git運用](Git運用.md)・[実行方針](AGENTS.md) | Issue・ブランチ・コミット・PRのルール |
+| [統一起動スキル](.claude/skills/start-frontend-backend/SKILL.md) | 標準ポートでの起動と競合解消 |
+| [Git運用](Git運用.md)・[実行方針](CLAUDE.md) | Issue・ブランチ・コミット・PRのルール |
 
 起動するにはこのREADME、全体を学ぶには学習メモ、個別の操作・API仕様にはfrontendとbackendのREADME、フロントの設計意図には実装のポイントを参照してください。
 
