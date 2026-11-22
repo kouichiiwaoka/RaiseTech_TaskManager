@@ -22,5 +22,5 @@ Settings → Branches → Add branch protection ruleで、以下を設定する�
 プランや権限で保存できない場合は課金・アップグレードせず報告する。
 
 ## 適用範囲
-mainへの直接pushはGitHubの保護で制限する。Issue起点、ブランチ命名、PRのIssue関連付けはAGENTS.mdでCodexに義務付ける。
+mainへの直接pushはGitHubの保護で制限する。Issue起点、ブランチ命名、PRのIssue関連付けはCLAUDE.mdでClaude Codeに義務付け、.claude/settings.jsonとフックで補助的に制御する。
 テンプレートだけではAPI経由のIssue作成やPRのIssue関連付けをGitHub側で強制できない。これらのサーバー側自動検査は未導入。

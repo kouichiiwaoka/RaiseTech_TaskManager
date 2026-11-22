@@ -14,7 +14,7 @@ docker compose ps
 
 セットアップはランダムなパスワードをGit対象外の `.env` に保存します。既存の `.env` は上書きしません。認証情報を含むため `.env` や `docker compose config` の出力を共有しないでください。
 
-DB名・ユーザー名は `taskmanager`、接続先は `127.0.0.1:5432` に固定します。競合時は別ポートへ変更せず、起動元を確認して競合する他プロジェクトのローカルサービスを通常停止します。同じプロジェクトの正常なサービスは再利用します。起動全体の手順は[統一起動スキル](../skills/start-frontend-backend/SKILL.md)を参照してください。
+DB名・ユーザー名は `taskmanager`、接続先は `127.0.0.1:5432` に固定します。競合時は別ポートへ変更せず、起動元を確認して競合する他プロジェクトのローカルサービスを通常停止します。同じプロジェクトの正常なサービスは再利用します。起動全体の手順は[統一起動スキル](../.claude/skills/start-frontend-backend/SKILL.md)を参照してください。
 
 ## 2. バックエンドを起動
 
@@ -118,7 +118,7 @@ PUT /api/tasks/{id}はtitle / description / priority / dueDateの全項目を置
 
 ## 文書更新・テストの進め方
 
-文書の作成・編集前は[文書運用ルール](../文書運用ルール.md)と[edit-project-docs](../skills/edit-project-docs/SKILL.md)、テスト実行前は[テスト運用ルール](../テスト運用ルール.md)と[plan-and-run-tests](../skills/plan-and-run-tests/SKILL.md)に従います。結果・未確認事項・省略理由は対応するIssue・PRに記録します。
+文書の作成・編集前は[文書運用ルール](../文書運用ルール.md)と[edit-project-docs](../.claude/skills/edit-project-docs/SKILL.md)、テスト実行前は[テスト運用ルール](../テスト運用ルール.md)と[plan-and-run-tests](../.claude/skills/plan-and-run-tests/SKILL.md)に従います。結果・未確認事項・省略理由は対応するIssue・PRに記録します。
 
 ## 現在の更新処理の制約
 

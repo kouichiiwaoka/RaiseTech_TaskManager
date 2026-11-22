@@ -26,7 +26,7 @@ TASK_API_TARGET=http://127.0.0.1:8080 npm run dev -- --host 127.0.0.1 --port 517
 
 `npm ci`は依存関係をlockファイルどおりにそろえるコマンドです。すでに必要な依存関係がある環境では再実行は不要です。起動中の開発サーバーはCtrl+Cで停止します。5173が使用中の場合は自動で別ポートに切り替えずエラーになります。
 
-標準ポートはフロント5173・バックエンド8080・DB5432に固定します。競合時は別ポートへ変更せず、起動元を確認して競合サービスを通常停止してから起動します。同じプロジェクトが正常起動済みなら再利用します。詳しくは[統一起動スキル](../skills/start-frontend-backend/SKILL.md)を参照してください。
+標準ポートはフロント5173・バックエンド8080・DB5432に固定します。競合時は別ポートへ変更せず、起動元を確認して競合サービスを通常停止してから起動します。同じプロジェクトが正常起動済みなら再利用します。詳しくは[統一起動スキル](../.claude/skills/start-frontend-backend/SKILL.md)を参照してください。
 
 DBが空ならボードも空です。必要ならバックエンドREADMEのローカル専用の架空データ投入手順を使用してください。通常起動ではサンプルを自動投入しません。
 
@@ -95,7 +95,7 @@ VitestとTesting Libraryによる自動テストは架空のレスポンスを�
 
 ## 文書更新・テストの進め方
 
-文書の作成・編集前は[文書運用ルール](../文書運用ルール.md)と[edit-project-docs](../skills/edit-project-docs/SKILL.md)、テスト実行前は[テスト運用ルール](../テスト運用ルール.md)と[plan-and-run-tests](../skills/plan-and-run-tests/SKILL.md)に従います。結果・未確認事項・省略理由は対応するIssue・PRに記録します。
+文書の作成・編集前は[文書運用ルール](../文書運用ルール.md)と[edit-project-docs](../.claude/skills/edit-project-docs/SKILL.md)、テスト実行前は[テスト運用ルール](../テスト運用ルール.md)と[plan-and-run-tests](../.claude/skills/plan-and-run-tests/SKILL.md)に従います。結果・未確認事項・省略理由は対応するIssue・PRに記録します。
 
 ## 同時編集時の制限
 
