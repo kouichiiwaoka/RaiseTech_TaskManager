@@ -39,6 +39,12 @@
       "Read(./.env.*)",
       "Read(**/.env)",
       "Read(**/.env.*)",
+      "Read(~/.aws/**)",
+      "Read(**/*.tfstate)",
+      "Read(**/*.tfstate.*)",
+      "Read(**/crash.log)",
+      "Edit(~/.aws/**)",
+      "Write(~/.aws/**)",
       "Edit(./.git/**)",
       "Write(./.git/**)"
     ],

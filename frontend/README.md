@@ -95,7 +95,7 @@ VitestとTesting Libraryによる自動テストは架空のレスポンスを�
 
 ## 文書更新・テストの進め方
 
-文書の作成・編集前は[文書運用ルール](../文書運用ルール.md)と[edit-project-docs](../.claude/skills/edit-project-docs/SKILL.md)、テスト実行前は[テスト運用ルール](../テスト運用ルール.md)と[plan-and-run-tests](../.claude/skills/plan-and-run-tests/SKILL.md)に従います。結果・未確認事項・省略理由は対応するIssue・PRに記録します。
+文書の作成・編集前は[文書運用ルール](../運用/文書運用ルール.md)と[edit-project-docs](../.claude/skills/edit-project-docs/SKILL.md)、テスト実行前は[テスト運用ルール](../運用/テスト運用ルール.md)と[plan-and-run-tests](../.claude/skills/plan-and-run-tests/SKILL.md)に従います。結果・未確認事項・省略理由は対応するIssue・PRに記録します。
 
 ## 同時編集時の制限
 

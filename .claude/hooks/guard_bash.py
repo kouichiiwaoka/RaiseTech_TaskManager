@@ -38,6 +38,16 @@ SCRIPT_DELETE = re.compile(
 SCRIPT_EXEC = re.compile(r"\bsystem\s*\(|\bexec[a-z]*\s*\(|popen|subprocess|child_process|spawn|do shell script|`")
 SCRIPT_ENV = re.compile(r"""['"]([^'"]*/)?\.env['"]""")
 SQL_DESTRUCTIVE = re.compile(r"\b(drop|truncate)\b|\bdelete\s+from\b", re.I)
+SECRET_PATH = re.compile(r"(^|[/~}])\.aws(/|$)|\.tfstate(\.[^/]*)?$|(^|/)crash\.log$")
+SECRET_TEXT = re.compile(r"\.aws/|\.tfstate|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN")
+SECRET_VAR = re.compile(r"\$\{?AWS_(SECRET_ACCESS_KEY|SESSION_TOKEN)")
+AWS_MUTATING = re.compile(
+    r"^(create|put|delete|remove|run|terminate|update|modify|attach|detach|start|stop|reboot|tag|untag|register|"
+    r"deregister|set|invoke|import|restore|revoke|authorize|associate|disassociate|enable|disable|reset|replace|"
+    r"copy|send|publish|upload|cancel|rotate|change|apply|execute|deploy)(-|$)"
+)
+AWS_OPTS_WITH_VALUE = {"--profile", "--region", "--output", "--query", "--endpoint-url", "--color", "--ca-bundle",
+                       "--cli-read-timeout", "--cli-connect-timeout", "--cli-binary-format"}
 ENV_FILE = re.compile(r"(^|/)\.env(\.[^/]*)?$")
 ENV_GLOB = re.compile(r"(^|/)\.e[^/]*$")
 READERS = {
@@ -146,6 +156,8 @@ class Checker:
         if depth > 5:
             self.ask("ネストが深いコマンドは確認が必要")
             return
+        if SECRET_VAR.search(command):
+            self.deny("AWS の秘密の環境変数を展開・表示する操作は禁止")
         command, heredocs = self.extract_heredocs(command)
         for body, quoted, head in heredocs:
             self.check_heredoc(body, quoted, head, depth)
@@ -184,6 +196,8 @@ class Checker:
             self.deny("スクリプト言語でのファイル削除は禁止")
         if SCRIPT_ENV.search(code):
             self.deny("スクリプトから .env を読む操作は禁止")
+        if SECRET_TEXT.search(code):
+            self.deny("スクリプトから AWS の認証情報・Terraform の state を読む操作は禁止")
         if SCRIPT_EXEC.search(code):
             self.ask("スクリプト言語からの外部コマンド実行は確認が必要")
 
@@ -199,6 +213,8 @@ class Checker:
             if t in RESERVED:
                 i += 1
             elif re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", t):
+                if t.startswith("TF_LOG"):
+                    self.ask("TF_LOG のデバッグ出力には秘密が含まれることがあるため確認が必要")
                 if t.startswith("GIT_CONFIG"):
                     self.ask("GIT_CONFIG_* による設定注入は確認が必要")
                 i += 1
@@ -244,10 +260,13 @@ class Checker:
         return args, redirects
 
     def check_tokens(self, tokens, depth=0):
+        self.check_env_dump(tokens)
         compound_end = bool(tokens) and tokens[0] in {"}", "done", "fi", "esac"}  # `{ ...; } > f` は中身を書く
         tokens, redirects = self.split_redirects(self.strip_wrappers(tokens))
         tokens = self.strip_wrappers(tokens)
         for op, target in redirects:
+            if "<" in op and op not in {"<<", "<<<"} and SECRET_PATH.search(target):
+                self.deny("AWS の認証情報・Terraform の state を読む操作は禁止")
             if "<" in op and op != "<<" and op != "<<<" and ENV_FILE.search(target) and not target.endswith(".env.example"):
                 self.deny(".env の内容を読む操作は禁止")
         # 中身を書かない上書き（`: > f`、`> f`、`true > f`、`cat /dev/null > f` など）による既存ファイルの内容消去
@@ -289,6 +308,10 @@ class Checker:
             self.ask("source による外部スクリプト実行は確認が必要")
         if cmd == "git":
             self.check_git(args)
+        if cmd == "aws":
+            self.check_aws(args)
+        if cmd == "terraform":
+            self.check_terraform(args)
         if cmd in {"rm", "rmdir", "unlink", "shred", "srm", "trash", "rimraf"}:
             self.deny(f"{cmd} によるファイル削除は禁止。不要ファイルは削除せず報告する")
         if cmd in {"npx", "pnpm", "yarn", "bunx"} and any(a in {"rimraf", "del-cli", "trash-cli", "kill-port"} for a in args):
@@ -331,6 +354,8 @@ class Checker:
             self.deny("Flyway clean（DB 全消去）は禁止")
         if cmd in READERS or INTERPRETER.match(cmd):
             for a in args:
+                if SECRET_PATH.search(a):
+                    self.deny("AWS の認証情報・Terraform の state を読む操作は禁止")
                 if ENV_FILE.search(a) and not a.endswith(".env.example"):
                     self.deny(".env の内容を読む・表示する操作は禁止")
                 elif ENV_GLOB.search(a) and GLOB_OR_EXPANSION.search(a):
@@ -386,6 +411,66 @@ class Checker:
         inner = args[i + 1 :]  # コンテナ名/サービス名の後
         if inner:
             self.check_tokens(inner, depth + 1)
+
+    # ---------- 環境変数・AWS・Terraform ----------
+    def check_env_dump(self, tokens):
+        if not tokens:
+            return
+        b, rest = os.path.basename(tokens[0]), tokens[1:]
+        if b == "env":
+            i = 0
+            while i < len(rest) and (rest[i].startswith("-") or "=" in rest[i]):
+                i += 2 if rest[i] in {"-u", "-C", "-S"} else 1
+            if i >= len(rest):
+                self.deny("環境変数の一覧表示は秘密を含む可能性があるため禁止")
+        elif b == "printenv":
+            names = [a for a in rest if not a.startswith("-")]
+            if not names or any(re.match(r"^AWS_(SECRET_ACCESS_KEY|SESSION_TOKEN)$", n) for n in names):
+                self.deny("環境変数の一覧表示・AWS の秘密の表示は禁止")
+        elif b == "set" and not rest:
+            self.deny("環境変数の一覧表示は秘密を含む可能性があるため禁止")
+        elif b in {"export", "declare", "typeset"} and (not rest or all(a.startswith("-") for a in rest)):
+            self.deny("環境変数の一覧表示は秘密を含む可能性があるため禁止")
+        elif b == "export" and any(a.startswith("TF_LOG") for a in rest):
+            self.ask("TF_LOG のデバッグ出力には秘密が含まれることがあるため確認が必要")
+
+    def check_aws(self, args):
+        words, i = [], 0
+        while i < len(args):
+            a = args[i]
+            if a.startswith("--"):
+                i += 2 if a.split("=", 1)[0] in AWS_OPTS_WITH_VALUE and "=" not in a else 1
+                continue
+            words.append(a)
+            i += 1
+        if len(words) < 2:
+            return
+        service, op = words[0], words[1]
+        if (service, op) in {("configure", "export-credentials"), ("configure", "get"), ("sts", "get-session-token"),
+                             ("sts", "assume-role"), ("sso", "get-role-credentials"), ("ecr", "get-login-password")}:
+            self.deny(f"aws {service} {op} は認証情報を表示するため禁止")
+        elif service == "configure" and op == "set":
+            self.ask("aws configure set による認証設定の変更は確認が必要")
+        elif service == "s3" and op in {"cp", "mv", "rm", "sync", "mb", "rb"} or AWS_MUTATING.match(op):
+            self.ask(f"aws {service} {op} は AWS のリソースを直接変更するため確認が必要（変更は Terraform で行う）")
+
+    def check_terraform(self, args):
+        rest = [a for a in args if not a.startswith("-chdir")]
+        sub = next((a for a in rest if not a.startswith("-")), "")
+        after = rest[rest.index(sub) + 1:] if sub else []
+        nxt = next((a for a in after if not a.startswith("-")), "")
+        if any(a.startswith("-target") for a in rest):
+            self.ask("terraform の -target 指定は確認が必要")
+        if sub == "state" and nxt in {"pull", "push", "rm", "mv", "replace-provider"}:
+            self.ask(f"terraform state {nxt} は state の秘密の表示・直接変更になるため確認が必要")
+        if sub in {"import", "force-unlock", "console", "taint", "untaint"}:
+            self.ask(f"terraform {sub} は確認が必要")
+        if sub == "output" and any(a.split("=", 1)[0] in {"-raw", "-json"} for a in after):
+            self.ask("terraform output -raw / -json は秘密の値を表示するため確認が必要")
+        if sub == "init" and any(a.split("=", 1)[0] in {"-migrate-state", "-reconfigure", "-backend-config", "-force-copy"} for a in after):
+            self.ask("terraform init による backend（state の保存先）の変更は確認が必要")
+        if sub == "show" and "-json" in after:
+            self.ask("terraform show -json は秘密の値を表示するため確認が必要")
 
     # ---------- git ----------
     @staticmethod
