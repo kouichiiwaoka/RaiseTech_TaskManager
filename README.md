@@ -130,7 +130,7 @@ DBのデータは名前付きボリュームに保持されます。再開は上
 
 ## テスト・ビルド
 
-実行前に[テスト運用ルール](テスト運用ルール.md)を読み、[plan-and-run-tests](.claude/skills/plan-and-run-tests/SKILL.md)で項目と期待結果・不足を確認します。既存項目の省略理由と実施結果はIssue・PRに残します。
+実行前に[テスト運用ルール](運用/テスト運用ルール.md)を読み、[plan-and-run-tests](.claude/skills/plan-and-run-tests/SKILL.md)で項目と期待結果・不足を確認します。既存項目の省略理由と実施結果はIssue・PRに残します。
 
 ### フロントエンド
 
@@ -176,7 +176,7 @@ DB_HOST=127.0.0.1 DB_PORT=5432 GRADLE_USER_HOME=/private/tmp/taskmanager-gradle 
 
 ## 文書を更新するとき
 
-作成・編集前に[文書運用ルール](文書運用ルール.md)を読み、[edit-project-docs](.claude/skills/edit-project-docs/SKILL.md)に従います。実行結果の履歴はREADMEへ追記せず、Issue・PRへ記録します。
+作成・編集前に[文書運用ルール](運用/文書運用ルール.md)を読み、[edit-project-docs](.claude/skills/edit-project-docs/SKILL.md)に従います。実行結果の履歴はREADMEへ追記せず、Issue・PRへ記録します。
 
 ## 関連文書
 
@@ -193,7 +193,9 @@ DB_HOST=127.0.0.1 DB_PORT=5432 GRADLE_USER_HOME=/private/tmp/taskmanager-gradle 
 | [学習メモ](学習メモ.md) | 検索からカード表示までの図解、全技術の役割と登場箇所 |
 | [実装のポイント](frontend/実装のポイント.md) | フロントエンドのコード上の工夫と設計意図 |
 | [統一起動スキル](.claude/skills/start-frontend-backend/SKILL.md) | 標準ポートでの起動と競合解消 |
-| [Git運用](Git運用.md)・[実行方針](CLAUDE.md) | Issue・ブランチ・コミット・PRのルール |
+| [Git運用](運用/Git運用.md)・[実行方針](CLAUDE.md) | Issue・ブランチ・コミット・PRのルール |
+| [テスト運用ルール](運用/テスト運用ルール.md)・[文書運用ルール](運用/文書運用ルール.md) | テストと文書の作業ルール |
+| [AWSデプロイ手順](運用/AWSデプロイ手順.md) | AWSの認証設定とTerraformによるデプロイの手順・用語解説 |
 
 起動するにはこのREADME、全体を学ぶには学習メモ、個別の操作・API仕様にはfrontendとbackendのREADME、フロントの設計意図には実装のポイントを参照してください。
 

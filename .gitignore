@@ -8,3 +8,17 @@
 
 # Claude Code personal settings
 .claude/settings.local.json
+
+# Terraform（state・変数ファイルには秘密が入ることがあるためコミットしない。.terraform.lock.hcl はコミットする）
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.tfplan
